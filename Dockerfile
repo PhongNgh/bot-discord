@@ -1,10 +1,11 @@
 FROM python:3.9
 
-# Cài đặt unrar-free và font
+# Cài đặt unrar-free và font, thêm debug
 RUN apt-get update && apt-get install -y \
     unrar-free \
     fonts-liberation \
-    && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/* \
+    && echo "Installed unrar-free at: $(which unrar-free)" > /app/unrar_install.log
 
 WORKDIR /app
 
