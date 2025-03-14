@@ -104,9 +104,13 @@ def add_watermark(input_path, output_path, watermark_text="Watermarked by Bot", 
         print(f"Error adding watermark: {e}")
         raise
 
+import rarfile
+import os
+import shutil
+
 def extract_rar(rar_path, extract_dir):
     """
-    Giải nén file RAR vào thư mục đích.
+    Giải nén file RAR vào thư mục đích sử dụng rarfile.
     
     Args:
         rar_path (str): Đường dẫn tới file RAR cần giải nén.
@@ -116,10 +120,13 @@ def extract_rar(rar_path, extract_dir):
         Exception: Nếu xảy ra lỗi trong quá trình giải nén.
     """
     try:
-        # Kiểm tra đường dẫn công cụ unrar-free
-        print(f"Checking unrar-free path: {rarfile.UNRAR_TOOL}, Exists: {os.path.exists(rarfile.UNRAR_TOOL)}")
+        # Đảm bảo thư mục đích tồn tại
+        os.makedirs(extract_dir, exist_ok=True)
         
-        # Mở và giải nén file RAR
+        # Debug: Kiểm tra công cụ giải nén trước khi sử dụng
+        print(f"Checking unrar-free path before extraction: {rarfile.UNRAR_TOOL}, Exists: {os.path.exists(rarfile.UNRAR_TOOL)}")
+        
+        # Giải nén file RAR
         with rarfile.RarFile(rar_path) as rf:
             rf.extractall(extract_dir)
         
@@ -133,6 +140,7 @@ def extract_rar(rar_path, extract_dir):
     except Exception as e:
         print(f"Error extracting RAR: {e}")
         raise Exception(f"Lỗi khi giải nén file: {str(e)}")
+        
 # Hàm nén file thành ZIP
 def create_zip(output_path, source_dir):
     with zipfile.ZipFile(output_path, 'w', zipfile.ZIP_DEFLATED) as zf:
