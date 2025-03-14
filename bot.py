@@ -117,13 +117,15 @@ def extract_rar(rar_path, extract_dir):
         os.makedirs(extract_dir, exist_ok=True)
         print(f"Checking unrar path before extraction: {rarfile.UNRAR_TOOL}, Exists: {os.path.exists(rarfile.UNRAR_TOOL)}")
         if not rarfile.is_rarfile(rar_path):
+            with open(rar_path, 'rb') as f:
+                print(f"File content (first 100 bytes): {f.read(100)}")  # Debug nội dung file
             raise Exception("File không phải là file RAR hợp lệ.")
         with rarfile.RarFile(rar_path) as rf:
             rf.extractall(extract_dir)
         print(f"Successfully extracted {rar_path} to {extract_dir}")
-    except rarfile.BadRarFile:
-        print(f"Error: File {rar_path} is not a valid RAR file.")
-        raise Exception(f"File {rar_path} không phải là file RAR hợp lệ.")
+    except rarfile.BadRarFile as e:
+        print(f"Error: File {rar_path} is not a valid RAR file. Details: {e}")
+        raise Exception(f"File {rar_path} không phải là file RAR hợp lệ. Chi tiết: {e}")
     except rarfile.RarCannotExec:
         print(f"Error: Không thể thực thi {rarfile.UNRAR_TOOL}. Vui lòng kiểm tra cài đặt.")
         raise Exception(f"Không tìm thấy công cụ giải nén tại {rarfile.UNRAR_TOOL}. Vui lòng kiểm tra cài đặt Docker.")
@@ -345,11 +347,15 @@ async def download(ctx, object_id: str):
                 status, done = downloader.next_chunk()
                 print(f"Download {int(status.progress() * 100)}%.")
         print(f"Downloaded file size: {os.path.getsize(temp_file_path)} bytes")
+        # Debug: Kiểm tra nội dung file tải về
+        with open(temp_file_path, 'rb') as f:
+            first_100_bytes = f.read(100)
+            print(f"First 100 bytes of downloaded file: {first_100_bytes.hex()}")
 
-        # Xử lý file dựa trên đuôi mở rộng thay vì MIME type
+        # Xử lý file dựa trên đuôi mở rộng
         if file_name.lower().endswith('.rar'):
             if not rarfile.is_rarfile(temp_file_path):
-                await ctx.reply(f"{ctx.author.mention}, file {file_name} không phải là file RAR hợp lệ.")
+                await ctx.reply(f"{ctx.author.mention}, file {file_name} không phải là file RAR hợp lệ. Vui lòng liên hệ Admin.")
                 shutil.rmtree(temp_dir, ignore_errors=True)
                 return
             extracted_dir = os.path.join(temp_dir, "extracted")
