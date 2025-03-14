@@ -19,14 +19,14 @@ import rarfile
 import zipfile
 
 # Cấu hình đường dẫn tới unrar với debug
-rarfile.UNRAR_TOOL = "unrar"
+rarfile.UNRAR_TOOL = "/usr/bin/unrar"
 print(f"Using unrar tool at: {rarfile.UNRAR_TOOL}")
 if not rarfile.UNRAR_TOOL or not os.path.exists(rarfile.UNRAR_TOOL):
     raise Exception(f"Không tìm thấy công cụ giải nén tại {rarfile.UNRAR_TOOL}. Vui lòng kiểm tra Dockerfile!")
 
 import shutil
-if not shutil.which(rarfile.UNRAR_TOOL):
-    raise Exception(f"Không tìm thấy công cụ giải nén '{rarfile.UNRAR_TOOL}'. Check lại Dockerfile giùm nha!")
+if not os.path.exists(rarfile.UNRAR_TOOL):
+    raise Exception(f"Không tìm thấy công cụ giải nén tại {rarfile.UNRAR_TOOL}. Check lại Dockerfile!")
 
 # Load environment variables
 load_dotenv()
