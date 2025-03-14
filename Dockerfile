@@ -1,11 +1,12 @@
 FROM python:3.9
 
+# Thiết lập thư mục làm việc
 WORKDIR /app
 
-# Thêm kho lưu trữ của rarlab và cài đặt unrar
+# Cập nhật hệ thống và cài đặt các phần mềm cần thiết
 RUN apt-get update && \
     apt-get install -y software-properties-common && \
-    add-apt-repository "deb http://archive.ubuntu.com/ubuntu $(lsb_release -sc) universe" && \
+    echo "deb http://archive.ubuntu.com/ubuntu focal main universe" >> /etc/apt/sources.list && \
     apt-get update && \
     apt-get install -y \
         unrar \
