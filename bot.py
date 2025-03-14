@@ -103,7 +103,6 @@ def add_watermark(input_path, output_path, watermark_text="Watermarked by Bot", 
         print(f"Error adding watermark: {e}")
         raise
 
-# Hàm giải nén file RAR
 def extract_rar(rar_path, extract_dir):
     """
     Giải nén file RAR vào thư mục đích sử dụng rarfile.
