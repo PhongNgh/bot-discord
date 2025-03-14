@@ -18,6 +18,13 @@ import shutil
 import rarfile
 import zipfile
 
+# Cấu hình đường dẫn tới unrar-free
+rarfile.UNRAR_TOOL = "/usr/bin/unrar"  # Thường là đường dẫn mặc định của unrar-free trên Debian
+if not os.path.exists(rarfile.UNRAR_TOOL):
+    rarfile.UNRAR_TOOL = "/usr/bin/unrar-free"  # Fallback tới unrar-free
+    if not os.path.exists(rarfile.UNRAR_TOOL):
+        raise Exception("Không tìm thấy unrar hoặc unrar-free. Vui lòng kiểm tra cài đặt Docker.")
+
 # Load environment variables
 load_dotenv()
 
@@ -105,7 +112,7 @@ def extract_rar(rar_path, extract_dir):
         print(f"Error: File {rar_path} is not a valid RAR file.")
         raise
     except rarfile.RarCannotExec:
-        print("Error: Cannot find unrar tool. Please ensure unrar is installed.")
+        print(f"Error: Không thể thực thi {rarfile.UNRAR_TOOL}. Vui lòng kiểm tra cài đặt.")
         raise
     except Exception as e:
         print(f"Error extracting RAR: {e}")
@@ -358,7 +365,7 @@ async def download(ctx, object_id: str):
         try:
             extract_rar(temp_file_path, extracted_dir)
         except Exception as e:
-            await ctx.reply(f"{ctx.author.mention}, lỗi khi giải nén file: {str(e)}")
+            await ctx.reply(f"{ctx.author.mention}, lỗi khi giải nén file: {str(e)}. Vui lòng liên hệ Admin.")
             shutil.rmtree(temp_dir, ignore_errors=True)
             return
         if os.path.exists(temp_file_path):
@@ -468,7 +475,7 @@ async def download(ctx, object_id: str):
                 await log_channel.send(log_message)
     except Exception as e:
         print(f"Error in download: {e}")
-        await ctx.reply(f"{ctx.author.mention}, có lỗi xảy ra: {str(e)}")
+        await ctx.reply(f"{ctx.author.mention}, có lỗi xảy ra: {str(e)}. Vui lòng liên hệ Admin.")
         return
 
 @bot.command()
