@@ -7,4 +7,3 @@ python-dotenv
 Pillow
 requests
 rarfile
-zipfile
