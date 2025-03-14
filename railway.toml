@@ -1,4 +1,0 @@
-[build]
-builder = "nixpacks"
-[build.args]
-APT_INSTALL = "unrar"
