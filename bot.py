@@ -19,12 +19,12 @@ import rarfile
 import zipfile
 
 # Cấu hình đường dẫn tới unrar-free với debug
-rarfile.UNRAR_TOOL = "/usr/bin/unrar"
+rarfile.UNRAR_TOOL = "/usr/bin/unrar-free"
 if not os.path.exists(rarfile.UNRAR_TOOL):
     rarfile.UNRAR_TOOL = "/usr/bin/unrar-free"
-    print(f"Checking unrar-free path: {rarfile.UNRAR_TOOL}, Exists: {os.path.exists(rarfile.UNRAR_TOOL)}")
+    print(f"Checking unrar-free path at startup: {rarfile.UNRAR_TOOL}, Exists: {os.path.exists(rarfile.UNRAR_TOOL)}")
     if not os.path.exists(rarfile.UNRAR_TOOL):
-        raise Exception("Không tìm thấy unrar hoặc unrar-free. Vui lòng kiểm tra cài đặt Docker.")
+        raise Exception("Không tìm thấy unrar-free tại /usr/bin/unrar-free. Vui lòng kiểm tra cài đặt Docker.")
 
 # Load environment variables
 load_dotenv()
