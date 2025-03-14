@@ -216,7 +216,7 @@ async def hotro(ctx, command=None):
         "getkey": "Lấy ObjectID của truyện cần tải",
         "download": "Tải và gửi vào kênh riêng",
         "check": "Kiểm tra thông tin lượt tải với Download ID",
-        "set": "Cấp role cho user",
+        "setrole": "Cấp role cho user",
         "cr": "Kiểm tra role hiện tại của bạn hoặc người khác"
     }
     is_admin_mod_team = has_role(ctx.author, ["Admin", "Mod", "Team"])
@@ -231,7 +231,7 @@ async def hotro(ctx, command=None):
                 f"{'list':<12} {commands_info['list']}\n"
                 f"{'download':<12} {commands_info['download']}\n"
                 f"{'check':<12} {commands_info['check']}\n"
-                f"{'set':<12} {commands_info['set']}\n"
+                f"{'setrole':<12} {commands_info['setrole']}\n"
                 f"{'cr':<12} {commands_info['cr']}\n"
                 "```\nGõ !hotro <lệnh> để xem chi tiết."
             )
@@ -249,7 +249,7 @@ async def hotro(ctx, command=None):
     else:
         command = command.lower()
         if command in commands_info:
-            if command in ["add", "delete", "check", "set"] and not is_admin_mod_team:
+            if command in ["add", "delete", "check", "setrole"] and not is_admin_mod_team:
                 await ctx.send("Bạn không có quyền xem chi tiết lệnh này!")
             else:
                 await ctx.send(f"**{command}**: {commands_info[command]}")
@@ -496,7 +496,7 @@ async def download(ctx, object_id: str):
 
 @bot.command()
 @commands.check(lambda ctx: has_role(ctx.author, ["Admin", "Mod", "Team"]))
-async def set(ctx):
+async def setrole(ctx):
     if len(ctx.message.mentions) != 1:
         await ctx.send("Vui lòng mention đúng một người!")
         return
