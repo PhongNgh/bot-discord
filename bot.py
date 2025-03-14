@@ -118,6 +118,9 @@ def extract_rar(rar_path, extract_dir):
         os.makedirs(extract_dir, exist_ok=True)
         # Debug: Kiểm tra công cụ giải nén trước khi sử dụng
         print(f"Checking unrar path before extraction: {rarfile.UNRAR_TOOL}, Exists: {os.path.exists(rarfile.UNRAR_TOOL)}")
+        # Kiểm tra xem file có phải là file RAR hợp lệ không
+        if not rarfile.is_rarfile(rar_path):
+            raise Exception("File không phải là file RAR hợp lệ.")
         # Giải nén file RAR
         with rarfile.RarFile(rar_path) as rf:
             rf.extractall(extract_dir)
