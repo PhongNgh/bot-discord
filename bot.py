@@ -118,7 +118,7 @@ def extract_rar(rar_path, extract_dir):
         print(f"Checking unrar path before extraction: {rarfile.UNRAR_TOOL}, Exists: {os.path.exists(rarfile.UNRAR_TOOL)}")
         if not rarfile.is_rarfile(rar_path):
             with open(rar_path, 'rb') as f:
-                print(f"File content (first 100 bytes): {f.read(100)}")  # Debug nội dung file
+                print(f"File content (first 100 bytes): {f.read(100).hex()}")
             raise Exception("File không phải là file RAR hợp lệ.")
         with rarfile.RarFile(rar_path) as rf:
             rf.extractall(extract_dir)
@@ -338,6 +338,11 @@ async def download(ctx, object_id: str):
         temp_file_path = os.path.join(temp_dir, file_name)
         print(f"Downloading to {temp_file_path}")
 
+        # Lấy thông tin file từ Google Drive để kiểm tra kích thước
+        file_metadata = drive_service.files().get(fileId=file["drive_file_id"], fields="size").execute()
+        expected_size = int(file_metadata.get("size", 0))
+        print(f"Expected file size from Google Drive: {expected_size} bytes")
+
         # Sử dụng Google Drive API để tải file
         request = drive_service.files().get_media(fileId=file["drive_file_id"])
         with open(temp_file_path, "wb") as f:
@@ -346,7 +351,13 @@ async def download(ctx, object_id: str):
             while not done:
                 status, done = downloader.next_chunk()
                 print(f"Download {int(status.progress() * 100)}%.")
-        print(f"Downloaded file size: {os.path.getsize(temp_file_path)} bytes")
+        actual_size = os.path.getsize(temp_file_path)
+        print(f"Downloaded file size: {actual_size} bytes")
+
+        # Kiểm tra kích thước file tải về
+        if actual_size != expected_size:
+            raise Exception(f"Kích thước file tải về không khớp! Dự kiến: {expected_size} bytes, Thực tế: {actual_size} bytes.")
+
         # Debug: Kiểm tra nội dung file tải về
         with open(temp_file_path, 'rb') as f:
             first_100_bytes = f.read(100)
