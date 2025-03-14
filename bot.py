@@ -18,11 +18,12 @@ import shutil
 import rarfile
 import zipfile
 
-# Cấu hình đường dẫn tới unrar với debug
-rarfile.UNRAR_TOOL = "/usr/bin/unrar"
-print(f"Using unrar tool at: {rarfile.UNRAR_TOOL}")
-if not rarfile.UNRAR_TOOL or not os.path.exists(rarfile.UNRAR_TOOL):
-    raise Exception(f"Không tìm thấy công cụ giải nén tại {rarfile.UNRAR_TOOL}. Vui lòng kiểm tra Dockerfile!")
+# Cấu hình đường dẫn tới unrar-free
+rarfile.UNRAR_TOOL = "/usr/bin/unrar-free"
+if not os.path.exists(rarfile.UNRAR_TOOL):
+    print(f"Checking unrar-free path at startup: {rarfile.UNRAR_TOOL}, Exists: {os.path.exists(rarfile.UNRAR_TOOL)}")
+    if not os.path.exists(rarfile.UNRAR_TOOL):
+        raise Exception("Không tìm thấy unrar-free tại /usr/bin/unrar-free. Vui lòng kiểm tra cài đặt Docker.")
 
 import shutil
 if not os.path.exists(rarfile.UNRAR_TOOL):
