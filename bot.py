@@ -42,7 +42,7 @@ intents.message_content = True
 bot = commands.Bot(command_prefix="!", intents=intents)
 
 # Thiết lập Google Drive API
-SCOPES = ["https://www.googleapis.com/auth/drive.file"]
+SCOPES = ["https://www.googleapis.com/auth/drive"]  # Đã cập nhật scope
 creds_json = os.getenv("GOOGLE_CREDENTIALS_JSON")
 if not creds_json:
     raise ValueError("Biến môi trường GOOGLE_CREDENTIALS_JSON chưa được thiết lập!")
