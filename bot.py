@@ -18,7 +18,6 @@ from PIL import Image, ImageDraw, ImageFont
 import shutil
 import rarfile
 import zipfile
-import mimetypes
 
 # Cấu hình đường dẫn tới unrar-free
 rarfile.UNRAR_TOOL = "/usr/bin/unrar-free"
@@ -236,7 +235,7 @@ async def on_message(message):
             os.unlink(temp_file.name)
             return
         file_metadata = {"name": file_name, "parents": [GOOGLE_DRIVE_FOLDER_ID]}
-        media = MediaFileUpload(temp_file.name, resumable=True)
+        media = MediaFileUpload(temp_file.name, resumable=True, mimetype='application/x-rar-compressed')
         try:
             file = drive_service.files().create(body=file_metadata, media_body=media, fields="id").execute()
             file_id = file.get("id")
@@ -331,7 +330,7 @@ async def download(ctx, object_id: str):
         file_name = file["name"]
         download_id = generate_download_id()
         downloads_dir = "/tmp"
-        temp_dir = os.path.join(downloads_dir, f"temp_{file_name}_{download_id}")
+        temp_dir = os.path.join(downloads_dir, f"temp_{download_id}")
         os.makedirs(temp_dir, exist_ok=True)
         # Đảm bảo tên file tải về có đuôi mở rộng
         temp_file_path = os.path.join(temp_dir, file_name)
@@ -347,22 +346,21 @@ async def download(ctx, object_id: str):
                 print(f"Download {int(status.progress() * 100)}%.")
         print(f"Downloaded file size: {os.path.getsize(temp_file_path)} bytes")
 
-        # Kiểm tra loại file và giải nén
-        file_type, _ = mimetypes.guess_type(temp_file_path)
-        extracted_dir = os.path.join(temp_dir, "extracted")
-        os.makedirs(extracted_dir, exist_ok=True)
-
-        if file_type == 'application/x-rar-compressed':
+        # Xử lý file dựa trên đuôi mở rộng thay vì MIME type
+        if file_name.lower().endswith('.rar'):
             if not rarfile.is_rarfile(temp_file_path):
                 await ctx.reply(f"{ctx.author.mention}, file {file_name} không phải là file RAR hợp lệ.")
                 shutil.rmtree(temp_dir, ignore_errors=True)
                 return
+            extracted_dir = os.path.join(temp_dir, "extracted")
             extract_rar(temp_file_path, extracted_dir)
-        elif file_type == 'application/zip':
+        elif file_name.lower().endswith('.zip'):
+            extracted_dir = os.path.join(temp_dir, "extracted")
+            os.makedirs(extracted_dir, exist_ok=True)
             with zipfile.ZipFile(temp_file_path, 'r') as zf:
                 zf.extractall(extracted_dir)
         else:
-            await ctx.reply(f"{ctx.author.mention}, định dạng file {file_name} không được hỗ trợ: {file_type}. Vui lòng liên hệ Admin.")
+            await ctx.reply(f"{ctx.author.mention}, định dạng file {file_name} không được hỗ trợ. Vui lòng liên hệ Admin.")
             shutil.rmtree(temp_dir, ignore_errors=True)
             return
 
@@ -400,7 +398,7 @@ async def download(ctx, object_id: str):
                         counter += 1
                     shutil.move(s, new_d)
         shutil.rmtree(extracted_dir)
-        output_zip_path = os.path.join(downloads_dir, f"{file_name}.zip")
+        output_zip_path = os.path.join(downloads_dir, f"{os.path.splitext(file_name)[0]}.zip")
         files_to_archive = [os.path.join(temp_dir, f) for f in os.listdir(temp_dir) if os.path.isfile(os.path.join(temp_dir, f))]
         if files_to_archive:
             create_zip(output_zip_path, temp_dir)
@@ -429,7 +427,7 @@ async def download(ctx, object_id: str):
             old_task = channel_timers[user.id][1]
             old_task.cancel()
             with open(output_zip_path, "rb") as f:
-                await existing_channel.send(file=discord.File(f, f"{file_name}.zip"))
+                await existing_channel.send(file=discord.File(f, f"{os.path.splitext(file_name)[0]}.zip"))
             await existing_channel.send("File đã được gửi! Kênh sẽ xóa sau 5 phút.")
             new_task = asyncio.create_task(delete_channel_after_delay(existing_channel, user.id))
             channel_timers[user.id] = (existing_channel, new_task)
@@ -441,7 +439,7 @@ async def download(ctx, object_id: str):
             }
             new_channel = await category.create_text_channel(channel_name, overwrites=overwrites)
             with open(output_zip_path, "rb") as f:
-                await new_channel.send(file=discord.File(f, f"{file_name}.zip"))
+                await new_channel.send(file=discord.File(f, f"{os.path.splitext(file_name)[0]}.zip"))
             await new_channel.send("File đã được gửi! Kênh sẽ xóa sau 5 phút.")
             task = asyncio.create_task(delete_channel_after_delay(new_channel, user.id))
             channel_timers[user.id] = (new_channel, task)
