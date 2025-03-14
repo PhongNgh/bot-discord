@@ -19,7 +19,7 @@ import rarfile
 import zipfile
 
 # Cấu hình đường dẫn tới unrar với debug
-rarfile.UNRAR_TOOL = "/usr/bin/unrar-free"
+rarfile.UNRAR_TOOL = "/usr/bin/unrar"
 if not os.path.exists(rarfile.UNRAR_TOOL):
     print(f"Checking unrar path at startup: {rarfile.UNRAR_TOOL}, Exists: {os.path.exists(rarfile.UNRAR_TOOL)}")
     if not os.path.exists(rarfile.UNRAR_TOOL):
