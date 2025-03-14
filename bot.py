@@ -18,13 +18,12 @@ import shutil
 import rarfile
 import zipfile
 
-# Cấu hình đường dẫn tới unrar-free với debug
-rarfile.UNRAR_TOOL = "/usr/bin/unrar-free"
+# Cấu hình đường dẫn tới unrar với debug
+rarfile.UNRAR_TOOL = "/usr/bin/unrar"
 if not os.path.exists(rarfile.UNRAR_TOOL):
-    rarfile.UNRAR_TOOL = "/usr/bin/unrar-free"
-    print(f"Checking unrar-free path at startup: {rarfile.UNRAR_TOOL}, Exists: {os.path.exists(rarfile.UNRAR_TOOL)}")
+    print(f"Checking unrar path at startup: {rarfile.UNRAR_TOOL}, Exists: {os.path.exists(rarfile.UNRAR_TOOL)}")
     if not os.path.exists(rarfile.UNRAR_TOOL):
-        raise Exception("Không tìm thấy unrar-free tại /usr/bin/unrar-free. Vui lòng kiểm tra cài đặt Docker.")
+        raise Exception("Không tìm thấy unrar tại /usr/bin/unrar. Vui lòng kiểm tra cài đặt Docker.")
 
 # Load environment variables
 load_dotenv()
@@ -104,32 +103,24 @@ def add_watermark(input_path, output_path, watermark_text="Watermarked by Bot", 
         print(f"Error adding watermark: {e}")
         raise
 
-import rarfile
-import os
-import shutil
-
+# Hàm giải nén file RAR
 def extract_rar(rar_path, extract_dir):
     """
     Giải nén file RAR vào thư mục đích sử dụng rarfile.
-    
     Args:
         rar_path (str): Đường dẫn tới file RAR cần giải nén.
         extract_dir (str): Thư mục đích để lưu các file đã giải nén.
-    
     Raises:
         Exception: Nếu xảy ra lỗi trong quá trình giải nén.
     """
     try:
         # Đảm bảo thư mục đích tồn tại
         os.makedirs(extract_dir, exist_ok=True)
-        
         # Debug: Kiểm tra công cụ giải nén trước khi sử dụng
-        print(f"Checking unrar-free path before extraction: {rarfile.UNRAR_TOOL}, Exists: {os.path.exists(rarfile.UNRAR_TOOL)}")
-        
+        print(f"Checking unrar path before extraction: {rarfile.UNRAR_TOOL}, Exists: {os.path.exists(rarfile.UNRAR_TOOL)}")
         # Giải nén file RAR
         with rarfile.RarFile(rar_path) as rf:
             rf.extractall(extract_dir)
-        
         print(f"Successfully extracted {rar_path} to {extract_dir}")
     except rarfile.BadRarFile:
         print(f"Error: File {rar_path} is not a valid RAR file.")
@@ -140,7 +131,7 @@ def extract_rar(rar_path, extract_dir):
     except Exception as e:
         print(f"Error extracting RAR: {e}")
         raise Exception(f"Lỗi khi giải nén file: {str(e)}")
-        
+
 # Hàm nén file thành ZIP
 def create_zip(output_path, source_dir):
     with zipfile.ZipFile(output_path, 'w', zipfile.ZIP_DEFLATED) as zf:
@@ -193,7 +184,6 @@ role_mapping = {
     "tusv": "Tử Sắc Vương",
     "dv": "Đế Vương"
 }
-
 role_durations = {
     "HV Hiệp Sĩ": 3456000,      # 40 ngày
     "HV Nam Tước": 6912000,     # 80 ngày
