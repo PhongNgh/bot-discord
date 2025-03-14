@@ -1,6 +1,5 @@
 FROM python:3.9
 
-# Đặt thư mục làm việc trước khi chạy các lệnh RUN
 WORKDIR /app
 
 # Cài đặt unrar-free và font, thêm debug
