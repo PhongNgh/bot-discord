@@ -2,10 +2,14 @@ FROM python:3.9
 
 WORKDIR /app
 
-# Cài đặt các phần mềm cần thiết
-RUN apt-get update && apt-get install -y \
-    unrar \
-    fonts-liberation \
+# Thêm kho lưu trữ của rarlab và cài đặt unrar
+RUN apt-get update && \
+    apt-get install -y software-properties-common && \
+    add-apt-repository "deb http://archive.ubuntu.com/ubuntu $(lsb_release -sc) universe" && \
+    apt-get update && \
+    apt-get install -y \
+        unrar \
+        fonts-liberation \
     && rm -rf /var/lib/apt/lists/* \
     && echo "Installed unrar at: $(which unrar)" > /app/unrar_install.log
 
