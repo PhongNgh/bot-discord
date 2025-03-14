@@ -2,13 +2,11 @@ import discord
 from discord.ext import commands, tasks
 import os
 import json
-from google.oauth2.credentials import Credentials
-from google_auth_oauthlib.flow import InstalledAppFlow
+from google.oauth2 import service_account
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
 from pymongo import MongoClient
 from datetime import datetime, timedelta
-from google.oauth2 import service_account
 import tempfile
 import requests
 import random
@@ -38,27 +36,14 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 
 # Thiết lập Google Drive API
 SCOPES = ["https://www.googleapis.com/auth/drive.file"]
-creds = None
-
-# Đọc credentials từ biến môi trường
 creds_json = os.getenv("GOOGLE_CREDENTIALS_JSON")
-if creds_json:
-    creds = service_account.Credentials.from_service_account_info(json.loads(creds_json), scopes=SCOPES)
-else:
-    token_json = os.getenv("GOOGLE_TOKEN_JSON")
-    if token_json:
-        with open("token.json", "w") as f:
-            f.write(token_json)
-        creds = Credentials.from_authorized_user_file("token.json", SCOPES)
-    else:
-        if os.path.exists("credentials.json"):
-            creds = Credentials.from_authorized_user_file("credentials.json", SCOPES)
-        if not creds or not creds.valid:
-            flow = InstalledAppFlow.from_client_secrets_file("credentials.json", SCOPES)
-            creds = flow.run_local_server(port=0)
-            with open("token.json", "w") as token:
-                token.write(creds.to_json())
-
+if not creds_json:
+    raise ValueError("Biến môi trường GOOGLE_CREDENTIALS_JSON chưa được thiết lập!")
+try:
+    creds_info = json.loads(creds_json)
+    creds = service_account.Credentials.from_service_account_info(creds_info, scopes=SCOPES)
+except Exception as e:
+    raise ValueError(f"Không thể load thông tin xác thực Google Drive: {e}")
 drive_service = build("drive", "v3", credentials=creds)
 
 # Thiết lập MongoDB
@@ -96,7 +81,10 @@ def add_watermark(input_path, output_path, watermark_text="Watermarked by Bot", 
             font = ImageFont.truetype("arial.ttf", font_size)
         except:
             font = ImageFont.load_default()  # Sử dụng font mặc định nếu arial.ttf không có
-        text_width, text_height = draw.textbbox((0, 0), watermark_text, font=font)[2:]
+            print("Không tìm thấy arial.ttf, sử dụng font mặc định.")
+        text_bbox = draw.textbbox((0, 0), watermark_text, font=font)
+        text_width = text_bbox[2] - text_bbox[0]
+        text_height = text_bbox[3] - text_bbox[1]
         x = random.randint(0, max(0, width - text_width))
         y = random.randint(0, max(0, height - text_height))
         fill_color = (0, 0, 0, int(255 * (opacity / 100)))
@@ -106,6 +94,7 @@ def add_watermark(input_path, output_path, watermark_text="Watermarked by Bot", 
         watermarked_image.save(output_path, "JPEG")
     except Exception as e:
         print(f"Error adding watermark: {e}")
+        raise
 
 # Hàm giải nén file RAR
 def extract_rar(rar_path, extract_dir):
@@ -174,6 +163,7 @@ role_mapping = {
     "tusv": "Tử Sắc Vương",
     "dv": "Đế Vương"
 }
+
 role_durations = {
     "HV Hiệp Sĩ": 3456000,      # 40 ngày
     "HV Nam Tước": 6912000,     # 80 ngày
