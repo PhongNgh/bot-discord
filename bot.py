@@ -220,8 +220,13 @@ async def on_message(message):
         return
     if message.author.id in pending_uploads and not message.content.startswith("!"):
         attachment = pending_uploads.pop(message.author.id)
+        # Lấy đuôi mở rộng từ file gốc
+        file_extension = os.path.splitext(attachment.filename)[1]  # Ví dụ: ".rar"
         file_name = message.content.strip()
-        temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(attachment.filename)[1])
+        # Thêm đuôi mở rộng vào tên file nếu chưa có
+        if not file_name.lower().endswith(file_extension.lower()):
+            file_name = file_name + file_extension
+        temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=file_extension)
         await attachment.save(temp_file.name)
         # Debug: Kiểm tra kích thước và nội dung file tạm
         file_size = os.path.getsize(temp_file.name)
@@ -231,7 +236,7 @@ async def on_message(message):
             os.unlink(temp_file.name)
             return
         file_metadata = {"name": file_name, "parents": [GOOGLE_DRIVE_FOLDER_ID]}
-        media = MediaFileUpload(temp_file.name, resumable=True)  # Sử dụng resumable upload cho file lớn
+        media = MediaFileUpload(temp_file.name, resumable=True)
         try:
             file = drive_service.files().create(body=file_metadata, media_body=media, fields="id").execute()
             file_id = file.get("id")
@@ -328,6 +333,7 @@ async def download(ctx, object_id: str):
         downloads_dir = "/tmp"
         temp_dir = os.path.join(downloads_dir, f"temp_{file_name}_{download_id}")
         os.makedirs(temp_dir, exist_ok=True)
+        # Đảm bảo tên file tải về có đuôi mở rộng
         temp_file_path = os.path.join(temp_dir, file_name)
         print(f"Downloading to {temp_file_path}")
 
@@ -520,7 +526,7 @@ async def cr(ctx, user: discord.Member = None):
     user_id = user.id
     if user_id in role_timers and role_timers[user_id]:
         role_messages = []
-        for role_name, (expiration_time, last_notified) in role_timers[user.id].items():
+        for role_name, (expiration_time, last_notified) in role_timers[user_id].items():
             remaining = expiration_time - datetime.utcnow()
             total_seconds = remaining.total_seconds()
             if total_seconds > 0:
