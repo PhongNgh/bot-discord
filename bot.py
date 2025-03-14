@@ -18,13 +18,24 @@ from PIL import Image, ImageDraw, ImageFont
 import shutil
 import rarfile
 import zipfile
+import logging
+
+# Cấu hình logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s [%(levelname)s] %(message)s',
+    handlers=[
+        logging.StreamHandler(),  # In ra console
+        # logging.FileHandler("bot.log")  # Ghi vào file (bỏ comment nếu muốn)
+    ]
+)
+logger = logging.getLogger(__name__)
 
 # Cấu hình đường dẫn tới unrar-free
 rarfile.UNRAR_TOOL = "/usr/bin/unrar-free"
 if not os.path.exists(rarfile.UNRAR_TOOL):
-    print(f"Checking unrar-free path at startup: {rarfile.UNRAR_TOOL}, Exists: {os.path.exists(rarfile.UNRAR_TOOL)}")
-    if not os.path.exists(rarfile.UNRAR_TOOL):
-        raise Exception("Không tìm thấy unrar-free tại /usr/bin/unrar-free. Vui lòng kiểm tra cài đặt Docker.")
+    logger.error(f"Checking unrar-free path at startup: {rarfile.UNRAR_TOOL}, Exists: {os.path.exists(rarfile.UNRAR_TOOL)}")
+    raise Exception("Không tìm thấy unrar-free tại /usr/bin/unrar-free. Vui lòng kiểm tra cài đặt Docker.")
 
 # Load environment variables
 load_dotenv()
@@ -89,7 +100,7 @@ def add_watermark(input_path, output_path, watermark_text="Watermarked by Bot", 
             font = ImageFont.truetype("arial.ttf", font_size)
         except:
             font = ImageFont.load_default()
-            print("Không tìm thấy arial.ttf, sử dụng font mặc định.")
+            logger.warning("Không tìm thấy arial.ttf, sử dụng font mặc định.")
         text_bbox = draw.textbbox((0, 0), watermark_text, font=font)
         text_width = text_bbox[2] - text_bbox[0]
         text_height = text_bbox[3] - text_bbox[1]
@@ -101,7 +112,7 @@ def add_watermark(input_path, output_path, watermark_text="Watermarked by Bot", 
         watermarked_image = watermarked_image.convert("RGB")
         watermarked_image.save(output_path, "JPEG")
     except Exception as e:
-        print(f"Error adding watermark: {e}")
+        logger.error(f"Error adding watermark: {e}")
         raise
 
 def extract_rar(rar_path, extract_dir):
@@ -115,22 +126,23 @@ def extract_rar(rar_path, extract_dir):
     """
     try:
         os.makedirs(extract_dir, exist_ok=True)
-        print(f"Checking unrar path before extraction: {rarfile.UNRAR_TOOL}, Exists: {os.path.exists(rarfile.UNRAR_TOOL)}")
+        logger.info(f"Checking unrar path before extraction: {rarfile.UNRAR_TOOL}, Exists: {os.path.exists(rarfile.UNRAR_TOOL)}")
         if not rarfile.is_rarfile(rar_path):
             with open(rar_path, 'rb') as f:
-                print(f"File content (first 100 bytes): {f.read(100).hex()}")
+                content = f.read()
+                logger.info(f"File content (all bytes): {content.hex()}")
             raise Exception("File không phải là file RAR hợp lệ.")
         with rarfile.RarFile(rar_path) as rf:
             rf.extractall(extract_dir)
-        print(f"Successfully extracted {rar_path} to {extract_dir}")
+        logger.info(f"Successfully extracted {rar_path} to {extract_dir}")
     except rarfile.BadRarFile as e:
-        print(f"Error: File {rar_path} is not a valid RAR file. Details: {e}")
+        logger.error(f"Error: File {rar_path} is not a valid RAR file. Details: {e}")
         raise Exception(f"File {rar_path} không phải là file RAR hợp lệ. Chi tiết: {e}")
     except rarfile.RarCannotExec:
-        print(f"Error: Không thể thực thi {rarfile.UNRAR_TOOL}. Vui lòng kiểm tra cài đặt.")
+        logger.error(f"Error: Không thể thực thi {rarfile.UNRAR_TOOL}. Vui lòng kiểm tra cài đặt.")
         raise Exception(f"Không tìm thấy công cụ giải nén tại {rarfile.UNRAR_TOOL}. Vui lòng kiểm tra cài đặt Docker.")
     except Exception as e:
-        print(f"Error extracting RAR: {e}")
+        logger.error(f"Error extracting RAR: {e}")
         raise Exception(f"Lỗi khi giải nén file: {str(e)}")
 
 # Hàm nén file thành ZIP
@@ -152,7 +164,7 @@ async def remove_role_after_delay(member, role, user_id):
     await asyncio.sleep((datetime.utcnow() - role_timers[user_id][role.name][0]).total_seconds() * -1)
     await member.remove_roles(role)
     if user_id in role_timers and role.name in role_timers[user_id]:
-        del role_timers[user_id][role.name]
+        del role_timers[user_id][role_name]
         if not role_timers[user_id]:
             del role_timers[user_id]
     channel = bot.get_channel(ROLE_NOTIFICATION_CHANNEL_ID)
@@ -202,7 +214,7 @@ role_durations = {
 
 @bot.event
 async def on_ready():
-    print(f"Bot đã sẵn sàng với tên {bot.user}")
+    logger.info(f"Bot đã sẵn sàng với tên {bot.user}")
     check_role_expirations.start()
 
 @bot.command()
@@ -231,7 +243,7 @@ async def on_message(message):
         await attachment.save(temp_file.name)
         # Debug: Kiểm tra kích thước và nội dung file tạm
         file_size = os.path.getsize(temp_file.name)
-        print(f"Temporary file saved at {temp_file.name}, size: {file_size} bytes")
+        logger.info(f"Temporary file saved at {temp_file.name}, size: {file_size} bytes")
         if file_size == 0:
             await message.channel.send("Lỗi: File tạm thời trống. Vui lòng kiểm tra file gốc!")
             os.unlink(temp_file.name)
@@ -254,7 +266,7 @@ async def on_message(message):
             await message.channel.send(f"File '{file_name}' đã được upload! ObjectID: {result.inserted_id}")
         except Exception as e:
             await message.channel.send(f"Lỗi khi upload file: {str(e)}. Vui lòng liên hệ Admin.")
-            print(f"Upload error: {e}")
+            logger.error(f"Upload error: {e}")
         finally:
             os.unlink(temp_file.name)
     await bot.process_commands(message)
@@ -336,23 +348,34 @@ async def download(ctx, object_id: str):
         os.makedirs(temp_dir, exist_ok=True)
         # Đảm bảo tên file tải về có đuôi mở rộng
         temp_file_path = os.path.join(temp_dir, file_name)
-        print(f"Downloading to {temp_file_path}")
+        logger.info(f"Downloading to {temp_file_path}")
 
         # Lấy thông tin file từ Google Drive để kiểm tra kích thước
         file_metadata = drive_service.files().get(fileId=file["drive_file_id"], fields="size").execute()
         expected_size = int(file_metadata.get("size", 0))
-        print(f"Expected file size from Google Drive: {expected_size} bytes")
+        logger.info(f"Expected file size from Google Drive: {expected_size} bytes")
 
-        # Sử dụng Google Drive API để tải file
+        # Sử dụng Google Drive API để tải file với timeout retry
         request = drive_service.files().get_media(fileId=file["drive_file_id"])
-        with open(temp_file_path, "wb") as f:
-            downloader = MediaIoBaseDownload(f, request)
-            done = False
-            while not done:
-                status, done = downloader.next_chunk()
-                print(f"Download {int(status.progress() * 100)}%.")
+        max_retries = 3
+        for attempt in range(max_retries):
+            try:
+                with open(temp_file_path, "wb") as f:
+                    downloader = MediaIoBaseDownload(f, request)
+                    done = False
+                    while not done:
+                        status, done = downloader.next_chunk()
+                        logger.info(f"Download attempt {attempt + 1}, {int(status.progress() * 100)}%.")
+                break
+            except Exception as e:
+                logger.error(f"Download attempt {attempt + 1} failed: {e}")
+                if attempt < max_retries - 1:
+                    await asyncio.sleep(2 ** attempt)  # Exponential backoff
+                else:
+                    raise Exception(f"Failed to download after {max_retries} attempts: {e}")
+
         actual_size = os.path.getsize(temp_file_path)
-        print(f"Downloaded file size: {actual_size} bytes")
+        logger.info(f"Downloaded file size: {actual_size} bytes")
 
         # Kiểm tra kích thước file tải về
         if actual_size != expected_size:
@@ -360,8 +383,8 @@ async def download(ctx, object_id: str):
 
         # Debug: Kiểm tra nội dung file tải về
         with open(temp_file_path, 'rb') as f:
-            first_100_bytes = f.read(100)
-            print(f"First 100 bytes of downloaded file: {first_100_bytes.hex()}")
+            content = f.read()
+            logger.info(f"File content (all bytes): {content.hex()}")
 
         # Xử lý file dựa trên đuôi mở rộng
         if file_name.lower().endswith('.rar'):
@@ -483,7 +506,7 @@ async def download(ctx, object_id: str):
                 )
                 await log_channel.send(log_message)
     except Exception as e:
-        print(f"Error in download: {e}")
+        logger.error(f"Error in download: {e}")
         await ctx.reply(f"{ctx.author.mention}, có lỗi xảy ra: {str(e)}. Vui lòng liên hệ Admin.")
         return
 
@@ -561,7 +584,7 @@ async def check_role_expirations():
     guild = bot.guilds[0]
     notification_channel = bot.get_channel(ROLE_NOTIFICATION_CHANNEL_ID)
     if not notification_channel:
-        print("Không tìm thấy kênh thông báo thời gian còn lại!")
+        logger.warning("Không tìm thấy kênh thông báo thời gian còn lại!")
         return
     current_time = datetime.utcnow()
     for member in guild.members:
@@ -585,6 +608,7 @@ async def on_command_error(ctx, error):
     elif isinstance(error, commands.MemberNotFound):
         await ctx.send("Không tìm thấy người dùng! Vui lòng mention một người dùng hợp lệ (ví dụ: @user).")
     else:
+        logger.error(f"Command error: {error}")
         raise error
 
 # Chạy bot
