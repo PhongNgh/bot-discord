@@ -18,10 +18,11 @@ import shutil
 import rarfile
 import zipfile
 
-# Cấu hình đường dẫn tới unrar-free
-rarfile.UNRAR_TOOL = "/usr/bin/unrar"  # Thường là đường dẫn mặc định của unrar-free trên Debian
+# Cấu hình đường dẫn tới unrar-free với debug
+rarfile.UNRAR_TOOL = "/usr/bin/unrar"
 if not os.path.exists(rarfile.UNRAR_TOOL):
-    rarfile.UNRAR_TOOL = "/usr/bin/unrar-free"  # Fallback tới unrar-free
+    rarfile.UNRAR_TOOL = "/usr/bin/unrar-free"
+    print(f"Checking unrar-free path: {rarfile.UNRAR_TOOL}, Exists: {os.path.exists(rarfile.UNRAR_TOOL)}")
     if not os.path.exists(rarfile.UNRAR_TOOL):
         raise Exception("Không tìm thấy unrar hoặc unrar-free. Vui lòng kiểm tra cài đặt Docker.")
 
@@ -87,7 +88,7 @@ def add_watermark(input_path, output_path, watermark_text="Watermarked by Bot", 
         try:
             font = ImageFont.truetype("arial.ttf", font_size)
         except:
-            font = ImageFont.load_default()  # Sử dụng font mặc định nếu arial.ttf không có
+            font = ImageFont.load_default()
             print("Không tìm thấy arial.ttf, sử dụng font mặc định.")
         text_bbox = draw.textbbox((0, 0), watermark_text, font=font)
         text_width = text_bbox[2] - text_bbox[0]
