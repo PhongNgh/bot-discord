@@ -25,20 +25,16 @@ if not os.path.exists(rarfile.UNRAR_TOOL):
     if not os.path.exists(rarfile.UNRAR_TOOL):
         raise Exception("Không tìm thấy unrar-free tại /usr/bin/unrar-free. Vui lòng kiểm tra cài đặt Docker.")
 
-import shutil
-if not os.path.exists(rarfile.UNRAR_TOOL):
-    raise Exception(f"Không tìm thấy công cụ giải nén tại {rarfile.UNRAR_TOOL}. Check lại Dockerfile!")
-
 # Load environment variables
 load_dotenv()
 
 # Environment variables
 DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
 MONGO_URI = os.getenv("MONGO_URI")
-GOOGLE_DRIVE_FOLDER_ID = "154LDz0RCSIaXfyD9wiyzOCLM9wCgIGHT"
-LOG_CHANNEL_ID = 1349221350811635712
-CATEGORY_ID = 1226130309754654751
-ROLE_NOTIFICATION_CHANNEL_ID = 1349595653629804555
+GOOGLE_DRIVE_FOLDER_ID = os.getenv("GOOGLE_DRIVE_FOLDER_ID")
+LOG_CHANNEL_ID = int(os.getenv("LOG_CHANNEL_ID"))
+CATEGORY_ID = int(os.getenv("CATEGORY_ID"))
+ROLE_NOTIFICATION_CHANNEL_ID = int(os.getenv("ROLE_NOTIFICATION_CHANNEL_ID"))
 
 # Thiết lập bot Discord
 intents = discord.Intents.default()
