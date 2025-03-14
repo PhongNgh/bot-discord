@@ -1,6 +1,7 @@
 import discord
 from discord.ext import commands, tasks
-import os, json
+import os
+import json
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
@@ -19,7 +20,10 @@ import shutil
 import rarfile
 import zipfile
 
+# Load environment variables
 load_dotenv()
+
+# Environment variables
 DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
 MONGO_URI = os.getenv("MONGO_URI")
 GOOGLE_DRIVE_FOLDER_ID = "154LDz0RCSIaXfyD9wiyzOCLM9wCgIGHT"
@@ -35,17 +39,26 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 # Thiết lập Google Drive API
 SCOPES = ["https://www.googleapis.com/auth/drive.file"]
 creds = None
+
+# Đọc credentials từ biến môi trường
 creds_json = os.getenv("GOOGLE_CREDENTIALS_JSON")
 if creds_json:
     creds = service_account.Credentials.from_service_account_info(json.loads(creds_json), scopes=SCOPES)
 else:
-    if os.path.exists("credentials.json"):
-        creds = Credentials.from_authorized_user_file("credentials.json", SCOPES)
-    if not creds or not creds.valid:
-        flow = InstalledAppFlow.from_client_secrets_file("credentials.json", SCOPES)
-        creds = flow.run_local_server(port=0)
-        with open("token.json", "w") as token:
-            token.write(creds.to_json())
+    token_json = os.getenv("GOOGLE_TOKEN_JSON")
+    if token_json:
+        with open("token.json", "w") as f:
+            f.write(token_json)
+        creds = Credentials.from_authorized_user_file("token.json", SCOPES)
+    else:
+        if os.path.exists("credentials.json"):
+            creds = Credentials.from_authorized_user_file("credentials.json", SCOPES)
+        if not creds or not creds.valid:
+            flow = InstalledAppFlow.from_client_secrets_file("credentials.json", SCOPES)
+            creds = flow.run_local_server(port=0)
+            with open("token.json", "w") as token:
+                token.write(creds.to_json())
+
 drive_service = build("drive", "v3", credentials=creds)
 
 # Thiết lập MongoDB
@@ -159,9 +172,8 @@ role_mapping = {
     "xsv": "Xích Sắc Vương",
     "tsv": "Thanh Sắc Vương",
     "tusv": "Tử Sắc Vương",
-    "dv": "Đế Vương"    
+    "dv": "Đế Vương"
 }
-
 role_durations = {
     "HV Hiệp Sĩ": 3456000,      # 40 ngày
     "HV Nam Tước": 6912000,     # 80 ngày
@@ -169,12 +181,12 @@ role_durations = {
     "HV Bá Tước": 20736000,     # 240 ngày
     "HV Hầu Tước": 27648000,    # 320 ngày
     "HV Công Tước": 34560000,   # 400 ngày
-    "HV Đại Công Tước": None, 
-    "HV Hoàng Tộc": None,      
-    "Xích Sắc Vương": None,     
-    "Thanh Sắc Vương": None,    
-    "Tử Sắc Vương": None,       
-    "Đế Vương": None            
+    "HV Đại Công Tước": None,
+    "HV Hoàng Tộc": None,
+    "Xích Sắc Vương": None,
+    "Thanh Sắc Vương": None,
+    "Tử Sắc Vương": None,
+    "Đế Vương": None
 }
 
 @bot.event
@@ -352,7 +364,6 @@ async def download(ctx, object_id: str):
         print(f"Downloaded file size: {os.path.getsize(temp_file_path)} bytes")
         extracted_dir = os.path.join(temp_dir, "extracted")
         os.makedirs(extracted_dir, exist_ok=True)
-        
         # Giải nén file RAR
         try:
             extract_rar(temp_file_path, extracted_dir)
@@ -362,13 +373,10 @@ async def download(ctx, object_id: str):
             return
         if os.path.exists(temp_file_path):
             os.remove(temp_file_path)
-
         # Lấy danh sách các file ảnh
         image_files = [os.path.join(root, file) for root, _, files in os.walk(extracted_dir) for file in files if file.lower().endswith((".jpg", ".jpeg", ".png"))]
-        
         # Kiểm tra role của người dùng
         skip_watermark = has_role(ctx.author, ["HV Bá Tước"])
-
         # Xác định số lượng ảnh cần watermark (nếu không skip)
         if not skip_watermark:
             total_images = len(image_files)
@@ -387,7 +395,6 @@ async def download(ctx, object_id: str):
                         os.replace(output_path, selected_image)
         else:
             selected_images = []
-
         for root, _, files in os.walk(extracted_dir):
             for file in files:
                 s = os.path.join(root, file)
@@ -410,7 +417,6 @@ async def download(ctx, object_id: str):
             shutil.rmtree(temp_dir)
             return
         file_size = os.path.getsize(output_zip_path)
-
         # Xác định giới hạn kích thước file dựa trên cấp độ boost
         boost_level = guild.premium_tier
         if boost_level == 0:
@@ -421,7 +427,6 @@ async def download(ctx, object_id: str):
             max_file_size = 50 * 1024 * 1024
         elif boost_level == 3:
             max_file_size = 100 * 1024 * 1024
-
         if file_size > max_file_size:
             await ctx.reply(f"{ctx.author.mention}, file quá lớn ({file_size / (1024 * 1024):.2f} MB). Giới hạn: {max_file_size / (1024 * 1024):.2f} MB.")
             shutil.rmtree(temp_dir)
@@ -527,7 +532,6 @@ async def cr(ctx, user: discord.Member = None):
         if not has_role(ctx.author, ["Admin", "Mod", "Team"]):
             await ctx.send(f"{ctx.author.mention}, bạn không có quyền kiểm tra role của người khác! Hãy dùng `!cr` để kiểm tra role của chính bạn.")
             return
-
     user_id = user.id
     if user_id in role_timers and role_timers[user_id]:
         role_messages = []
