@@ -4,7 +4,8 @@ import os
 import json
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
-from googleapiclient.http import MediaFileUpload
+from googleapiclient.http import MediaIoBaseDownload, MediaFileUpload
+import io
 from pymongo import MongoClient
 from datetime import datetime, timedelta
 import tempfile
@@ -17,6 +18,7 @@ from PIL import Image, ImageDraw, ImageFont
 import shutil
 import rarfile
 import zipfile
+import mimetypes
 
 # Cấu hình đường dẫn tới unrar-free
 rarfile.UNRAR_TOOL = "/usr/bin/unrar-free"
@@ -42,7 +44,7 @@ intents.message_content = True
 bot = commands.Bot(command_prefix="!", intents=intents)
 
 # Thiết lập Google Drive API
-SCOPES = ["https://www.googleapis.com/auth/drive"]  # Đã cập nhật scope
+SCOPES = ["https://www.googleapis.com/auth/drive"]
 creds_json = os.getenv("GOOGLE_CREDENTIALS_JSON")
 if not creds_json:
     raise ValueError("Biến môi trường GOOGLE_CREDENTIALS_JSON chưa được thiết lập!")
@@ -113,14 +115,10 @@ def extract_rar(rar_path, extract_dir):
         Exception: Nếu xảy ra lỗi trong quá trình giải nén.
     """
     try:
-        # Đảm bảo thư mục đích tồn tại
         os.makedirs(extract_dir, exist_ok=True)
-        # Debug: Kiểm tra công cụ giải nén trước khi sử dụng
         print(f"Checking unrar path before extraction: {rarfile.UNRAR_TOOL}, Exists: {os.path.exists(rarfile.UNRAR_TOOL)}")
-        # Kiểm tra xem file có phải là file RAR hợp lệ không
         if not rarfile.is_rarfile(rar_path):
             raise Exception("File không phải là file RAR hợp lệ.")
-        # Giải nén file RAR
         with rarfile.RarFile(rar_path) as rf:
             rf.extractall(extract_dir)
         print(f"Successfully extracted {rar_path} to {extract_dir}")
@@ -207,55 +205,6 @@ async def on_ready():
     check_role_expirations.start()
 
 @bot.command()
-async def hotro(ctx, command=None):
-    commands_info = {
-        "add": "Thêm truyện mới",
-        "delete": "Xóa truyện",
-        "list": "Hiển thị danh sách các truyện hiện có",
-        "getkey": "Lấy ObjectID của truyện cần tải",
-        "download": "Tải và gửi vào kênh riêng",
-        "check": "Kiểm tra thông tin lượt tải với Download ID",
-        "setrole": "Cấp role cho user",
-        "cr": "Kiểm tra role hiện tại của bạn hoặc người khác"
-    }
-    is_admin_mod_team = has_role(ctx.author, ["Admin", "Mod", "Team"])
-    if command is None:
-        if is_admin_mod_team:
-            help_message = (
-                "```yaml\n"
-                "**Danh sách chức năng hiện có :**\n"
-                f"{'add':<12} {commands_info['add']}\n"
-                f"{'delete':<12} {commands_info['delete']}\n"
-                f"{'getkey':<12} {commands_info['getkey']}\n"
-                f"{'list':<12} {commands_info['list']}\n"
-                f"{'download':<12} {commands_info['download']}\n"
-                f"{'check':<12} {commands_info['check']}\n"
-                f"{'setrole':<12} {commands_info['setrole']}\n"
-                f"{'cr':<12} {commands_info['cr']}\n"
-                "```\nGõ !hotro <lệnh> để xem chi tiết."
-            )
-        else:
-            help_message = (
-                "```yaml\n"
-                "**Danh sách chức năng hiện có :**\n"
-                f"{'list':<12} {commands_info['list']}\n"
-                f"{'getkey':<12} {commands_info['getkey']}\n"
-                f"{'download':<12} {commands_info['download']}\n"
-                f"{'cr':<12} {commands_info['cr']}\n"
-                "```\nGõ !hotro <lệnh> để xem chi tiết."
-            )
-        await ctx.send(help_message)
-    else:
-        command = command.lower()
-        if command in commands_info:
-            if command in ["add", "delete", "check", "setrole"] and not is_admin_mod_team:
-                await ctx.send("Bạn không có quyền xem chi tiết lệnh này!")
-            else:
-                await ctx.send(f"**{command}**: {commands_info[command]}")
-        else:
-            await ctx.send(f"Không tìm thấy lệnh '{command}'. Sử dụng !hotro để xem danh sách lệnh.")
-
-@bot.command()
 @commands.check(lambda ctx: has_role(ctx.author, ["Admin", "Mod", "Team"]))
 async def add(ctx):
     if not ctx.message.attachments:
@@ -272,24 +221,36 @@ async def on_message(message):
     if message.author.id in pending_uploads and not message.content.startswith("!"):
         attachment = pending_uploads.pop(message.author.id)
         file_name = message.content.strip()
-        temp_file = tempfile.NamedTemporaryFile(delete=False)
+        temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(attachment.filename)[1])
         await attachment.save(temp_file.name)
+        # Debug: Kiểm tra kích thước và nội dung file tạm
+        file_size = os.path.getsize(temp_file.name)
+        print(f"Temporary file saved at {temp_file.name}, size: {file_size} bytes")
+        if file_size == 0:
+            await message.channel.send("Lỗi: File tạm thời trống. Vui lòng kiểm tra file gốc!")
+            os.unlink(temp_file.name)
+            return
         file_metadata = {"name": file_name, "parents": [GOOGLE_DRIVE_FOLDER_ID]}
-        media = MediaFileUpload(temp_file.name)
-        file = drive_service.files().create(body=file_metadata, media_body=media, fields="id").execute()
-        file_id = file.get("id")
-        drive_service.permissions().create(fileId=file_id, body={"role": "reader", "type": "anyone"}).execute()
-        file_url = f"https://drive.google.com/uc?id={file_id}"
-        file_data = {
-            "name": file_name,
-            "url": file_url,
-            "upload_time": datetime.utcnow(),
-            "uploader": message.author.name,
-            "drive_file_id": file_id
-        }
-        result = files_collection.insert_one(file_data)
-        await message.channel.send(f"File '{file_name}' đã được upload! ObjectID: {result.inserted_id}")
-        os.unlink(temp_file.name)
+        media = MediaFileUpload(temp_file.name, resumable=True)  # Sử dụng resumable upload cho file lớn
+        try:
+            file = drive_service.files().create(body=file_metadata, media_body=media, fields="id").execute()
+            file_id = file.get("id")
+            drive_service.permissions().create(fileId=file_id, body={"role": "reader", "type": "anyone"}).execute()
+            file_url = f"https://drive.google.com/uc?id={file_id}"
+            file_data = {
+                "name": file_name,
+                "url": file_url,
+                "upload_time": datetime.utcnow(),
+                "uploader": message.author.name,
+                "drive_file_id": file_id
+            }
+            result = files_collection.insert_one(file_data)
+            await message.channel.send(f"File '{file_name}' đã được upload! ObjectID: {result.inserted_id}")
+        except Exception as e:
+            await message.channel.send(f"Lỗi khi upload file: {str(e)}. Vui lòng liên hệ Admin.")
+            print(f"Upload error: {e}")
+        finally:
+            os.unlink(temp_file.name)
     await bot.process_commands(message)
 
 @bot.command()
@@ -362,41 +323,47 @@ async def download(ctx, object_id: str):
         if not file:
             await ctx.reply(f"{ctx.author.mention}, không tìm thấy file!")
             return
-        url = file["url"]
         file_name = file["name"]
         download_id = generate_download_id()
-        downloads_dir = "/tmp"  # Thay đổi sang thư mục tạm của Railway
+        downloads_dir = "/tmp"
         temp_dir = os.path.join(downloads_dir, f"temp_{file_name}_{download_id}")
         os.makedirs(temp_dir, exist_ok=True)
         temp_file_path = os.path.join(temp_dir, file_name)
         print(f"Downloading to {temp_file_path}")
-        response = requests.get(url)
+
+        # Sử dụng Google Drive API để tải file
+        request = drive_service.files().get_media(fileId=file["drive_file_id"])
         with open(temp_file_path, "wb") as f:
-            f.write(response.content)
+            downloader = MediaIoBaseDownload(f, request)
+            done = False
+            while not done:
+                status, done = downloader.next_chunk()
+                print(f"Download {int(status.progress() * 100)}%.")
         print(f"Downloaded file size: {os.path.getsize(temp_file_path)} bytes")
-        
-        # Debug: Kiểm tra xem file đã được tải về có phải là file RAR hợp lệ không
-        if not rarfile.is_rarfile(temp_file_path):
-            await ctx.reply(f"{ctx.author.mention}, file đã tải về không phải là file RAR hợp lệ.")
-            shutil.rmtree(temp_dir, ignore_errors=True)
-            return
-        
+
+        # Kiểm tra loại file và giải nén
+        file_type, _ = mimetypes.guess_type(temp_file_path)
         extracted_dir = os.path.join(temp_dir, "extracted")
         os.makedirs(extracted_dir, exist_ok=True)
-        # Giải nén file RAR
-        try:
+
+        if file_type == 'application/x-rar-compressed':
+            if not rarfile.is_rarfile(temp_file_path):
+                await ctx.reply(f"{ctx.author.mention}, file {file_name} không phải là file RAR hợp lệ.")
+                shutil.rmtree(temp_dir, ignore_errors=True)
+                return
             extract_rar(temp_file_path, extracted_dir)
-        except Exception as e:
-            await ctx.reply(f"{ctx.author.mention}, lỗi khi giải nén file: {str(e)}. Vui lòng liên hệ Admin.")
+        elif file_type == 'application/zip':
+            with zipfile.ZipFile(temp_file_path, 'r') as zf:
+                zf.extractall(extracted_dir)
+        else:
+            await ctx.reply(f"{ctx.author.mention}, định dạng file {file_name} không được hỗ trợ: {file_type}. Vui lòng liên hệ Admin.")
             shutil.rmtree(temp_dir, ignore_errors=True)
             return
+
         if os.path.exists(temp_file_path):
             os.remove(temp_file_path)
-        # Lấy danh sách các file ảnh
         image_files = [os.path.join(root, file) for root, _, files in os.walk(extracted_dir) for file in files if file.lower().endswith((".jpg", ".jpeg", ".png"))]
-        # Kiểm tra role của người dùng
         skip_watermark = has_role(ctx.author, ["HV Bá Tước"])
-        # Xác định số lượng ảnh cần watermark (nếu không skip)
         if not skip_watermark:
             total_images = len(image_files)
             if total_images < 40:
@@ -436,7 +403,6 @@ async def download(ctx, object_id: str):
             shutil.rmtree(temp_dir)
             return
         file_size = os.path.getsize(output_zip_path)
-        # Xác định giới hạn kích thước file dựa trên cấp độ boost
         boost_level = guild.premium_tier
         if boost_level == 0:
             max_file_size = 8 * 1024 * 1024
@@ -532,7 +498,7 @@ async def setrole(ctx):
         role_names = ", ".join(role.name for role in roles_to_add)
         for role in roles_to_add:
             duration = role_durations.get(role.name)
-            if duration is not None:  # Chỉ tạo bộ đếm nếu duration có giá trị
+            if duration is not None:
                 expiration_time = datetime.utcnow() + timedelta(seconds=duration)
                 if user.id not in role_timers:
                     role_timers[user.id] = {}
@@ -554,7 +520,7 @@ async def cr(ctx, user: discord.Member = None):
     user_id = user.id
     if user_id in role_timers and role_timers[user_id]:
         role_messages = []
-        for role_name, (expiration_time, last_notified) in role_timers[user_id].items():
+        for role_name, (expiration_time, last_notified) in role_timers[user.id].items():
             remaining = expiration_time - datetime.utcnow()
             total_seconds = remaining.total_seconds()
             if total_seconds > 0:
