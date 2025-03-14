@@ -1,8 +1,8 @@
 FROM python:3.9
 
-# Cài đặt unrar (phiên bản đầy đủ) và font
+# Cài đặt unrar-free và font
 RUN apt-get update && apt-get install -y \
-    unrar \
+    unrar-free \
     fonts-liberation \
     && rm -rf /var/lib/apt/lists/*
 
