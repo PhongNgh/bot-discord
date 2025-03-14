@@ -104,21 +104,35 @@ def add_watermark(input_path, output_path, watermark_text="Watermarked by Bot", 
         print(f"Error adding watermark: {e}")
         raise
 
-# Hàm giải nén file RAR
 def extract_rar(rar_path, extract_dir):
+    """
+    Giải nén file RAR vào thư mục đích.
+    
+    Args:
+        rar_path (str): Đường dẫn tới file RAR cần giải nén.
+        extract_dir (str): Thư mục đích để lưu các file đã giải nén.
+    
+    Raises:
+        Exception: Nếu xảy ra lỗi trong quá trình giải nén.
+    """
     try:
+        # Kiểm tra đường dẫn công cụ unrar-free
+        print(f"Checking unrar-free path: {rarfile.UNRAR_TOOL}, Exists: {os.path.exists(rarfile.UNRAR_TOOL)}")
+        
+        # Mở và giải nén file RAR
         with rarfile.RarFile(rar_path) as rf:
             rf.extractall(extract_dir)
+        
+        print(f"Successfully extracted {rar_path} to {extract_dir}")
     except rarfile.BadRarFile:
         print(f"Error: File {rar_path} is not a valid RAR file.")
-        raise
+        raise Exception(f"File {rar_path} không phải là file RAR hợp lệ.")
     except rarfile.RarCannotExec:
         print(f"Error: Không thể thực thi {rarfile.UNRAR_TOOL}. Vui lòng kiểm tra cài đặt.")
-        raise
+        raise Exception(f"Không tìm thấy công cụ giải nén tại {rarfile.UNRAR_TOOL}. Vui lòng kiểm tra cài đặt Docker.")
     except Exception as e:
         print(f"Error extracting RAR: {e}")
-        raise
-
+        raise Exception(f"Lỗi khi giải nén file: {str(e)}")
 # Hàm nén file thành ZIP
 def create_zip(output_path, source_dir):
     with zipfile.ZipFile(output_path, 'w', zipfile.ZIP_DEFLATED) as zf:
