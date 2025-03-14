@@ -375,6 +375,13 @@ async def download(ctx, object_id: str):
         with open(temp_file_path, "wb") as f:
             f.write(response.content)
         print(f"Downloaded file size: {os.path.getsize(temp_file_path)} bytes")
+        
+        # Debug: Kiểm tra xem file đã được tải về có phải là file RAR hợp lệ không
+        if not rarfile.is_rarfile(temp_file_path):
+            await ctx.reply(f"{ctx.author.mention}, file đã tải về không phải là file RAR hợp lệ.")
+            shutil.rmtree(temp_dir, ignore_errors=True)
+            return
+        
         extracted_dir = os.path.join(temp_dir, "extracted")
         os.makedirs(extracted_dir, exist_ok=True)
         # Giải nén file RAR
