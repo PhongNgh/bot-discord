@@ -78,6 +78,7 @@ role_timers = {}  # {user_id: {role_name: (expiration_time, last_notified)}}
 
 # Giới hạn kích thước file
 MAX_FILE_SIZE = 8 * 1024 * 1024
+MINIMUM_RAR_SIZE = 512  # Kích thước tối thiểu của file RAR hợp lệ (bytes)
 
 # Hàm tạo ID ngẫu nhiên
 def generate_download_id():
@@ -130,8 +131,8 @@ def extract_rar(rar_path, extract_dir):
         if not rarfile.is_rarfile(rar_path):
             with open(rar_path, 'rb') as f:
                 content = f.read()
-                logger.info(f"File content (all bytes): {content.hex()}")
-            raise Exception("File không phải là file RAR hợp lệ.")
+                logger.error(f"File content (all bytes): {content.hex()}")
+            raise Exception(f"File {os.path.basename(rar_path)} không phải là file RAR hợp lệ.")
         with rarfile.RarFile(rar_path) as rf:
             rf.extractall(extract_dir)
         logger.info(f"Successfully extracted {rar_path} to {extract_dir}")
@@ -248,6 +249,15 @@ async def on_message(message):
             await message.channel.send("Lỗi: File tạm thời trống. Vui lòng kiểm tra file gốc!")
             os.unlink(temp_file.name)
             return
+        # Kiểm tra kích thước tối thiểu và định dạng file
+        if file_size < MINIMUM_RAR_SIZE and file_name.lower().endswith('.rar'):
+            await message.channel.send(f"Lỗi: File '{file_name}' quá nhỏ ({file_size} bytes) để là file RAR hợp lệ. Vui lòng kiểm tra lại!")
+            os.unlink(temp_file.name)
+            return
+        if file_name.lower().endswith('.rar') and not rarfile.is_rarfile(temp_file.name):
+            await message.channel.send(f"Lỗi: File '{file_name}' không phải là file RAR hợp lệ!")
+            os.unlink(temp_file.name)
+            return
         file_metadata = {"name": file_name, "parents": [GOOGLE_DRIVE_FOLDER_ID]}
         media = MediaFileUpload(temp_file.name, resumable=True, mimetype='application/x-rar-compressed')
         try:
@@ -357,7 +367,7 @@ async def download(ctx, object_id: str):
 
         # Sử dụng Google Drive API để tải file với timeout retry
         request = drive_service.files().get_media(fileId=file["drive_file_id"])
-        max_retries = 3
+        max_retries = 5  # Tăng số lần thử lại lên 5
         for attempt in range(max_retries):
             try:
                 with open(temp_file_path, "wb") as f:
@@ -380,6 +390,11 @@ async def download(ctx, object_id: str):
         # Kiểm tra kích thước file tải về
         if actual_size != expected_size:
             raise Exception(f"Kích thước file tải về không khớp! Dự kiến: {expected_size} bytes, Thực tế: {actual_size} bytes.")
+        if actual_size < MINIMUM_RAR_SIZE:
+            with open(temp_file_path, 'rb') as f:
+                content = f.read()
+                logger.error(f"File tải về quá nhỏ! Nội dung (hex): {content.hex()}")
+            raise Exception(f"File tải về quá nhỏ để là file hợp lệ! Kích thước: {actual_size} bytes, yêu cầu tối thiểu: {MINIMUM_RAR_SIZE} bytes.")
 
         # Debug: Kiểm tra nội dung file tải về
         with open(temp_file_path, 'rb') as f:
@@ -389,7 +404,7 @@ async def download(ctx, object_id: str):
         # Xử lý file dựa trên đuôi mở rộng
         if file_name.lower().endswith('.rar'):
             if not rarfile.is_rarfile(temp_file_path):
-                await ctx.reply(f"{ctx.author.mention}, file {file_name} không phải là file RAR hợp lệ. Vui lòng liên hệ Admin.")
+                await ctx.reply(f"{ctx.author.mention}, file {file_name} không phải là file RAR hợp lệ. Kích thước: {actual_size} bytes. Vui lòng kiểm tra file gốc trên Google Drive hoặc upload lại!")
                 shutil.rmtree(temp_dir, ignore_errors=True)
                 return
             extracted_dir = os.path.join(temp_dir, "extracted")
@@ -507,7 +522,11 @@ async def download(ctx, object_id: str):
                 await log_channel.send(log_message)
     except Exception as e:
         logger.error(f"Error in download: {e}")
-        await ctx.reply(f"{ctx.author.mention}, có lỗi xảy ra: {str(e)}. Vui lòng liên hệ Admin.")
+        await ctx.reply(f"{ctx.author.mention}, có lỗi xảy ra: {str(e)}. Vui lòng kiểm tra file gốc trên Google Drive hoặc liên hệ Admin.")
+        if os.path.exists(temp_file_path):
+            os.remove(temp_file_path)
+        if os.path.exists(temp_dir):
+            shutil.rmtree(temp_dir, ignore_errors=True)
         return
 
 @bot.command()
