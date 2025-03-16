@@ -242,7 +242,7 @@ async def hotro(ctx):
         "**!delete <object_id>** - Xóa file khỏi Google Drive và MongoDB.\n"
         "**!setrole** hoặc **!set** <@user> <role> - Gán role cho người dùng (ví dụ: `!setrole @user hiepsi-namtuoc`).\n"
         "**!check <download_id>** - Kiểm tra thông tin lượt tải bằng Download ID.\n"
-        "**!cr** - Kiểm tra role của bản thân / !cr [user] - Kiểm tra role của người khác.\n"
+        "**!cr** - Kiểm tra role của bản thân / **!cr [user]** - Kiểm tra role của người khác.\n"
     )
 
     # Kiểm tra role của người dùng
