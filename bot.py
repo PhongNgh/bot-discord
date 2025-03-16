@@ -348,9 +348,9 @@ async def list(ctx):
     files = files_collection.find()
     file_list = [f"{file['name']}" for file in files]
     if not file_list:
-        await ctx.send(f"{ctx.author.mention}, chưa có file nào!")
+        await ctx.send(f"{ctx.author.mention}, chưa có truyện nào trong danh sách, hãy bảo Admin thêm vào kho nhé ㋡!")
     else:
-        await ctx.send(f"{ctx.author.mention}, danh sách các file:\n" + "\n".join(file_list))
+        await ctx.send(f"{ctx.author.mention}, đây là danh sách các truyện hiện tại:\n" + "\n".join(file_list))
 
 @bot.command()
 async def getkey(ctx, name: str):
@@ -645,7 +645,7 @@ async def cr(ctx, user: discord.Member = None):
         else:
             await ctx.send(f"{ctx.author.mention}, {user.name} không có role nào đang hoạt động!")
     else:
-        await ctx.send(f"{ctx.author.mention}, bạn không có role nào!")
+        await ctx.send(f"{ctx.author.mention}, bạn không có role nào, hãy donate rồi ib cho Admin để Admin cấp role cho bạn nha ㋡")
 
 @tasks.loop(minutes=10)
 async def check_role_expirations():
