@@ -228,7 +228,7 @@ async def on_ready():
 async def hotro(ctx):
     # Danh sách lệnh chung cho tất cả người dùng
     common_commands = (
-        f"Xin chào {ctx.author.mention}! Tôi là Căn Bộ Thần Tra. Dưới đây là danh sách các lệnh bạn có thể dùng:\n\n"
+        f"Xin chào {ctx.author.mention}! Tôi là Cán Bộ Thanh Tra. Dưới đây là danh sách các lệnh bạn có thể dùng:\n\n"
         "**!hotro** - Hiển thị danh sách tất cả các lệnh (bạn đang dùng lệnh này!).\n"
         "**!list** - Hiển thị danh sách tất cả các file đã upload.\n"
         "**!getkey <file_name>** - Lấy ObjectID của file theo tên.\n"
