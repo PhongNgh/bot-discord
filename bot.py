@@ -223,17 +223,17 @@ async def on_ready():
     logger.info(f"Bot đã sẵn sàng với tên {bot.user}")
     check_role_expirations.start()
 
-# Thêm lệnh !hotro để hiển thị danh sách câu lệnh
+# Lệnh !hotro để hiển thị danh sách câu lệnh
 @bot.command(aliases=["trogiup"])
 async def hotro(ctx):
-    # Danh sách lệnh chung cho tất cả người dùng
+    # Danh sách lệnh chung cho tất cả mọi người
     common_commands = (
         f"Xin chào {ctx.author.mention}! Dưới đây là danh sách các lệnh bạn có thể dùng:\n\n"
         "**!hotro** - Hiển thị danh sách tất cả các lệnh (bạn đang dùng lệnh này!).\n"
         "**!list** - Hiển thị danh sách tất cả các file đã upload.\n"
         "**!getkey <file_name>** - Lấy ObjectID của file theo tên.\n"
         "**!download <object_id>** - Tải file từ Google Drive (file sẽ được giải nén và gửi qua kênh riêng).\n"
-        "**!cr [user]** - Kiểm tra thời gian còn lại của role.\n"
+        "**!cr** - Kiểm tra thời gian còn lại của role.\n"
     )
 
     # Danh sách lệnh dành riêng cho Admin/Mod/Team
@@ -242,6 +242,7 @@ async def hotro(ctx):
         "**!delete <object_id>** - Xóa file khỏi Google Drive và MongoDB.\n"
         "**!setrole** hoặc **!set** <@user> <role> - Gán role cho người dùng (ví dụ: `!setrole @user hiepsi-namtuoc`).\n"
         "**!check <download_id>** - Kiểm tra thông tin lượt tải bằng Download ID.\n"
+        "**!cr** - Kiểm tra role của bản thân / !cr [user] - Kiểm tra role của người khác.\n"
     )
 
     # Kiểm tra role của người dùng
@@ -252,7 +253,7 @@ async def hotro(ctx):
         help_message = (
             f"{common_commands}\n"
             f"{admin_commands}\n"
-            ""
+            "Nếu có vấn đề, hãy liên hệ Admin nhé! 😊"
         )
     else:
         help_message = (
