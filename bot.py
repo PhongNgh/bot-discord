@@ -645,7 +645,7 @@ async def cr(ctx, user: discord.Member = None):
         else:
             await ctx.send(f"{ctx.author.mention}, {user.name} không có role nào đang hoạt động!")
     else:
-        await ctx.send(f"{ctx.author.mention}, {user.name} không có role nào!")
+        await ctx.send(f"{ctx.author.mention}, bạn không có role nào!")
 
 @tasks.loop(minutes=10)
 async def check_role_expirations():
