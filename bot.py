@@ -64,7 +64,7 @@ try:
     creds = service_account.Credentials.from_service_account_info(creds_info, scopes=SCOPES)
 except Exception as e:
     raise ValueError(f"Không thể load thông tin xác thực Google Drive: {e}")
-drive_service = build("drive", "v3", credentials=creds, requestTimeout=30)  # Thêm timeout
+drive_service = build("drive", "v3", credentials=creds)  # Loại bỏ requestTimeout
 
 # Thiết lập MongoDB
 try:
@@ -178,7 +178,7 @@ async def remove_role_after_delay(member, role, user_id):
     await asyncio.sleep((datetime.utcnow() - role_timers[user_id][role.name][0]).total_seconds() * -1)
     await member.remove_roles(role)
     if user_id in role_timers and role.name in role_timers[user_id]:
-        del role_timers[user_id][role.name]
+        del role_timers[user_id][role_name]
         if not role_timers[user_id]:
             del role_timers[user_id]
     channel = bot.get_channel(ROLE_NOTIFICATION_CHANNEL_ID)
