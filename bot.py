@@ -233,7 +233,7 @@ async def hotro(ctx):
         "**!list** - Hiển thị danh sách tất cả các file đã upload.\n"
         "**!getkey <file_name>** - Lấy ObjectID của file theo tên.\n"
         "**!download <object_id>** - Tải file từ Google Drive (file sẽ được giải nén và gửi qua kênh riêng).\n"
-        "**!cr [user]** - Kiểm tra thời gian còn lại của role (không nhập user để kiểm tra chính bạn).\n"
+        "**!cr [user]** - Kiểm tra thời gian còn lại của role.\n"
     )
 
     # Danh sách lệnh dành riêng cho Admin/Mod/Team
@@ -244,11 +244,21 @@ async def hotro(ctx):
         "**!check <download_id>** - Kiểm tra thông tin lượt tải bằng Download ID.\n"
     )
 
-    help_message = (
-        f"{common_commands}"
-        f"{admin_commands}\n"
-        "Nếu có vấn đề, hãy liên hệ Admin nhé! 😊"
-    )
+    # Kiểm tra role của người dùng
+    is_admin_or_mod = has_role(ctx.author, ["Admin", "Mod", "Team"])
+
+    # Xây dựng thông điệp dựa trên role
+    if is_admin_or_mod:
+        help_message = (
+            f"{common_commands}\n"
+            f"{admin_commands}\n"
+            "Nếu có vấn đề, hãy liên hệ Admin nhé! 😊"
+        )
+    else:
+        help_message = (
+            f"{common_commands}\n"
+            "Nếu có vấn đề, hãy liên hệ Admin nhé! 😊"
+        )
 
     await ctx.send(help_message)
 
