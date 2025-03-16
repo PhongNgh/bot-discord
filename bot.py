@@ -267,11 +267,11 @@ async def hotro(ctx):
 @commands.check(lambda ctx: has_role(ctx.author, ["Admin", "Mod", "Team"]))
 async def add(ctx):
     if not ctx.message.attachments:
-        await ctx.send("Vui lòng đính kèm một file!")
+        await ctx.send(f"{ctx.author.mention}, vui lòng đính kèm một file!")
         return
     attachment = ctx.message.attachments[0]
     pending_uploads[ctx.author.id] = attachment
-    await ctx.send("Bạn muốn đặt tên file này là gì? Vui lòng trả lời tên file.")
+    await ctx.send(f"{ctx.author.mention}, bạn muốn đặt tên file này là gì? Vui lòng trả lời tên file.")
 
 @bot.event
 async def on_message(message):
@@ -291,18 +291,19 @@ async def on_message(message):
         file_size = os.path.getsize(temp_file.name)
         logger.info(f"Temporary file saved at {temp_file.name}, size: {file_size} bytes")
         if file_size == 0:
-            await message.channel.send("Lỗi: File tạm thời trống. Vui lòng kiểm tra file gốc!")
+            await message.channel.send(f"{message.author.mention}, lỗi: File tạm thời trống. Vui lòng kiểm tra file gốc!")
             os.unlink(temp_file.name)
             return
         # Kiểm tra kích thước tối thiểu và định dạng file
         if file_size < MINIMUM_RAR_SIZE and file_name.lower().endswith('.rar'):
-            await message.channel.send(f"Lỗi: File '{file_name}' quá nhỏ ({file_size} bytes) để là file RAR hợp lệ. Vui lòng kiểm tra lại!")
+            await message.channel.send(f"{message.author.mention}, lỗi: File '{file_name}' quá nhỏ ({file_size} bytes) để là file RAR hợp lệ. Vui lòng kiểm tra lại!")
             os.unlink(temp_file.name)
             return
-        if file_name.lower().endswith('.rar') and not rarfile.is_rarfile(temp_file.name):
-            await message.channel.send(f"Lỗi: File '{file_name}' không phải là file RAR hợp lệ!")
-            os.unlink(temp_file.name)
-            return
+        if file_name.lower().endswith('.rar'):
+            if not rarfile.is_rarfile(temp_file.name):
+                await message.channel.send(f"{message.author.mention}, lỗi: File '{file_name}' không phải là file RAR hợp lệ!")
+                os.unlink(temp_file.name)
+                return
         file_metadata = {"name": file_name, "parents": [GOOGLE_DRIVE_FOLDER_ID]}
         media = MediaFileUpload(temp_file.name, resumable=True, mimetype='application/x-rar-compressed')
         try:
@@ -318,9 +319,9 @@ async def on_message(message):
                 "drive_file_id": file_id
             }
             result = files_collection.insert_one(file_data)
-            await message.channel.send(f"File '{file_name}' đã được upload! ObjectID: {result.inserted_id}")
+            await message.channel.send(f"{message.author.mention}, file '{file_name}' đã được upload! ObjectID: {result.inserted_id}")
         except Exception as e:
-            await message.channel.send(f"Lỗi khi upload file: {str(e)}. Vui lòng liên hệ Admin.")
+            await message.channel.send(f"{message.author.mention}, lỗi khi upload file: {str(e)}. Vui lòng liên hệ Admin.")
             logger.error(f"Upload error: {e}")
         finally:
             os.unlink(temp_file.name)
@@ -333,14 +334,14 @@ async def delete(ctx, object_id: str):
         from bson.objectid import ObjectId
         file = files_collection.find_one({"_id": ObjectId(object_id)})
         if not file:
-            await ctx.send("Không tìm thấy file với ObjectID này!")
+            await ctx.send(f"{ctx.author.mention}, không tìm thấy file với ObjectID này!")
             return
         drive_file_id = file["drive_file_id"]
         drive_service.files().delete(fileId=drive_file_id).execute()
         files_collection.delete_one({"_id": ObjectId(object_id)})
-        await ctx.send(f"File '{file['name']}' đã được xóa!")
+        await ctx.send(f"{ctx.author.mention}, file '{file['name']}' đã được xóa!")
     except Exception as e:
-        await ctx.send(f"Có lỗi xảy ra: {str(e)}")
+        await ctx.send(f"{ctx.author.mention}, có lỗi xảy ra: {str(e)}")
         return
 
 @bot.command()
@@ -366,7 +367,7 @@ async def check(ctx, download_id: str):
     try:
         download_log = downloads_collection.find_one({"download_id": download_id})
         if not download_log:
-            await ctx.send(f"Không tìm thấy Download ID: {download_id}")
+            await ctx.send(f"{ctx.author.mention}, không tìm thấy Download ID: {download_id}")
             return
         user_name = download_log["user_name"]
         file_name = download_log["file_name"]
@@ -381,7 +382,7 @@ async def check(ctx, download_id: str):
         )
         await ctx.send(response)
     except Exception as e:
-        await ctx.send(f"Có lỗi xảy ra: {str(e)}")
+        await ctx.send(f"{ctx.author.mention}, có lỗi xảy ra: {str(e)}")
         return
 
 @bot.command()
@@ -453,7 +454,7 @@ async def download(ctx, object_id: str):
         # Xử lý file dựa trên đuôi mở rộng
         if file_name.lower().endswith('.rar'):
             if not rarfile.is_rarfile(temp_file_path):
-                await ctx.reply(f"{ctx.author.mention}, file {file_name} không phải là file RAR hợp lệ. Kích thước: {actual_size} bytes. Vui lòng kiểm tra file gốc trên Google Drive hoặc upload lại!")
+                await ctx.reply(f"{ctx.author.mention}, file {file_name} không phải là file RAR hợp lệ. Kích thước: {actual_size} bytes. Vui lòng kiểm tra file gốc trên Google Drive hoặc liên hệ Admin.")
                 shutil.rmtree(temp_dir, ignore_errors=True)
                 return
             extracted_dir = os.path.join(temp_dir, "extracted")
@@ -582,12 +583,12 @@ async def download(ctx, object_id: str):
 @commands.check(lambda ctx: has_role(ctx.author, ["Admin", "Mod", "Team"]))
 async def setrole(ctx):
     if len(ctx.message.mentions) != 1:
-        await ctx.send("Vui lòng mention đúng một người!")
+        await ctx.send(f"{ctx.author.mention}, vui lòng mention đúng một người!")
         return
     user = ctx.message.mentions[0]
     role_part = ctx.message.content.split(maxsplit=2)[2] if len(ctx.message.content.split()) > 2 else ""
     if not role_part:
-        await ctx.send("Vui lòng cung cấp danh sách role (ví dụ: hiepsi-namtuoc-tutuoc-batuoc)!")
+        await ctx.send(f"{ctx.author.mention}, vui lòng cung cấp danh sách role (ví dụ: hiepsi-namtuoc-tutuoc-batuoc)!")
         return
     roles_input = role_part.split("-")
     roles_to_add = []
@@ -603,7 +604,7 @@ async def setrole(ctx):
         else:
             invalid_roles.append(role_input)
     if invalid_roles:
-        await ctx.send(f"Hiện chưa có role {' và '.join(invalid_roles)}, vui lòng tạo role rồi gửi lại yêu cầu!")
+        await ctx.send(f"{ctx.author.mention}, hiện chưa có role {' và '.join(invalid_roles)}, vui lòng tạo role rồi gửi lại yêu cầu!")
         return
     if roles_to_add:
         await user.add_roles(*roles_to_add)
@@ -672,12 +673,12 @@ async def check_role_expirations():
 @bot.event
 async def on_command_error(ctx, error):
     if isinstance(error, commands.MissingRole):
-        await ctx.send("Bạn không có quyền sử dụng lệnh này!")
+        await ctx.send(f"{ctx.author.mention}, bạn không có quyền sử dụng lệnh này!")
     elif isinstance(error, commands.MemberNotFound):
-        await ctx.send("Không tìm thấy người dùng! Vui lòng mention một người dùng hợp lệ (ví dụ: @user).")
+        await ctx.send(f"{ctx.author.mention}, không tìm thấy người dùng! Vui lòng mention một người dùng hợp lệ (ví dụ: @user).")
     else:
         logger.error(f"Command error: {error}")
-        await ctx.send(f"Có lỗi xảy ra: {str(error)}. Vui lòng liên hệ Admin.")
+        await ctx.send(f"{ctx.author.mention}, có lỗi xảy ra: {str(error)}. Vui lòng liên hệ Admin.")
 
 # Chạy bot
 bot.run(DISCORD_TOKEN)
