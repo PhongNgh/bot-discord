@@ -244,20 +244,6 @@ async def hotro(ctx):
         "**!check <download_id>** - Kiểm tra thông tin lượt tải bằng Download ID (yêu cầu quyền Admin/Mod/Team).\n"
     )
 
-    # Kiểm tra xem người dùng có role Admin/Mod/Team không
-    if has_role(ctx.author, ["Admin", "Mod", "Team"]):
-        help_message = (
-            f"Xin chào {ctx.author.mention}! Bạn là Admin/Mod/Team, dưới đây là toàn bộ danh sách lệnh:\n\n"
-            f"{common_commands}"
-            f"{admin_commands}\n"
-            "Nếu có vấn đề, hãy liên hệ Admin nhé! 😊"
-        )
-    else:
-        help_message = (
-            f"{common_commands}\n"
-            "Nếu có vấn đề, hãy liên hệ Admin nhé! 😊"
-        )
-
     await ctx.send(help_message)
 
 @bot.command()
