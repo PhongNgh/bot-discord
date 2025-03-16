@@ -64,13 +64,18 @@ try:
     creds = service_account.Credentials.from_service_account_info(creds_info, scopes=SCOPES)
 except Exception as e:
     raise ValueError(f"Không thể load thông tin xác thực Google Drive: {e}")
-drive_service = build("drive", "v3", credentials=creds)
+drive_service = build("drive", "v3", credentials=creds, requestTimeout=30)  # Thêm timeout
 
 # Thiết lập MongoDB
-mongo_client = MongoClient(MONGO_URI)
-db = mongo_client["discord_bot_db"]
-files_collection = db["uploaded_files"]
-downloads_collection = db["downloads"]
+try:
+    mongo_client = MongoClient(MONGO_URI, serverSelectionTimeoutMS=5000)
+    mongo_client.server_info()  # Kiểm tra kết nối
+    db = mongo_client["discord_bot_db"]
+    files_collection = db["uploaded_files"]
+    downloads_collection = db["downloads"]
+except Exception as e:
+    logger.error(f"Không thể kết nối MongoDB: {e}")
+    raise Exception(f"Không thể kết nối MongoDB. Vui lòng kiểm tra MONGO_URI: {e}")
 
 # Lưu trạng thái tạm thời
 pending_uploads = {}
