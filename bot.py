@@ -51,6 +51,7 @@ ROLE_NOTIFICATION_CHANNEL_ID = int(os.getenv("ROLE_NOTIFICATION_CHANNEL_ID"))
 # Thiết lập bot Discord
 intents = discord.Intents.default()
 intents.message_content = True
+intents.members = True  # Thêm intents.members để xử lý role
 bot = commands.Bot(command_prefix="!", intents=intents)
 
 # Thiết lập Google Drive API
@@ -172,7 +173,7 @@ async def remove_role_after_delay(member, role, user_id):
     await asyncio.sleep((datetime.utcnow() - role_timers[user_id][role.name][0]).total_seconds() * -1)
     await member.remove_roles(role)
     if user_id in role_timers and role.name in role_timers[user_id]:
-        del role_timers[user_id][role_name]
+        del role_timers[user_id][role.name]
         if not role_timers[user_id]:
             del role_timers[user_id]
     channel = bot.get_channel(ROLE_NOTIFICATION_CHANNEL_ID)
@@ -224,6 +225,24 @@ role_durations = {
 async def on_ready():
     logger.info(f"Bot đã sẵn sàng với tên {bot.user}")
     check_role_expirations.start()
+
+# Thêm lệnh !hotro để hiển thị danh sách câu lệnh
+@bot.command(aliases=["help"])
+async def hotro(ctx):
+    help_message = (
+        f"Xin chào {ctx.author.mention}! Tôi là Căn Bộ Thần Tra. Dưới đây là danh sách các lệnh hiện có:\n\n"
+        "**!hotro** - Hiển thị danh sách tất cả các lệnh (bạn đang dùng lệnh này!).\n"
+        "**!add** - Upload file lên Google Drive (yêu cầu quyền Admin/Mod/Team).\n"
+        "**!delete <object_id>** - Xóa file khỏi Google Drive và MongoDB (yêu cầu quyền Admin/Mod/Team).\n"
+        "**!list** - Hiển thị danh sách tất cả các file đã upload.\n"
+        "**!getkey <file_name>** - Lấy ObjectID của file theo tên.\n"
+        "**!download <object_id>** - Tải file từ Google Drive (file sẽ được giải nén và gửi qua kênh riêng).\n"
+        "**!check <download_id>** - Kiểm tra thông tin lượt tải bằng Download ID.\n"
+        "**!setrole <@user> <role>** - Gán role cho người dùng (yêu cầu quyền Admin/Mod/Team, ví dụ: `!setrole @user hiepsi-namtuoc`).\n"
+        "**!cr [user]** - Kiểm tra thời gian còn lại của role (không nhập user để kiểm tra chính bạn, yêu cầu quyền Admin/Mod/Team để kiểm tra người khác).\n\n"
+        "Nếu có vấn đề, hãy liên hệ Admin nhé! 😊"
+    )
+    await ctx.send(help_message)
 
 @bot.command()
 @commands.check(lambda ctx: has_role(ctx.author, ["Admin", "Mod", "Team"]))
@@ -540,11 +559,6 @@ async def download(ctx, object_id: str):
         return
 
 @bot.command()
-async def hotro(ctx):
-    """Lệnh hỗ trợ cơ bản để trả lời người dùng."""
-    await ctx.send(f"{ctx.author.mention}, xin chào! Tôi là Cán Bộ Thanh Tra. Bạn cần hỗ trợ gì? Vui lòng dùng các lệnh như `!add`, `!download`, `!list`, hoặc liên hệ Admin nếu có vấn đề. 😊")
-
-@bot.command()
 @commands.check(lambda ctx: has_role(ctx.author, ["Admin", "Mod", "Team"]))
 async def setrole(ctx):
     if len(ctx.message.mentions) != 1:
@@ -639,11 +653,11 @@ async def check_role_expirations():
 async def on_command_error(ctx, error):
     if isinstance(error, commands.MissingRole):
         await ctx.send("Bạn không có quyền sử dụng lệnh này!")
-    elif isinstance(error, commands.CommandNotFound):
-        await ctx.send(f"{ctx.author.mention}, lệnh không tồn tại. Vui lòng dùng `!hotro` để xem danh sách lệnh!")
+    elif isinstance(error, commands.MemberNotFound):
+        await ctx.send("Không tìm thấy người dùng! Vui lòng mention một người dùng hợp lệ (ví dụ: @user).")
     else:
         logger.error(f"Command error: {error}")
-        await ctx.send(f"{ctx.author.mention}, có lỗi xảy ra: {str(error)}. Vui lòng liên hệ Admin.")
+        await ctx.send(f"Có lỗi xảy ra: {str(error)}. Vui lòng liên hệ Admin.")
 
 # Chạy bot
 bot.run(DISCORD_TOKEN)
