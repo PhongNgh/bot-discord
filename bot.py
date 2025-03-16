@@ -64,7 +64,7 @@ try:
     creds = service_account.Credentials.from_service_account_info(creds_info, scopes=SCOPES)
 except Exception as e:
     raise ValueError(f"Không thể load thông tin xác thực Google Drive: {e}")
-drive_service = build("drive", "v3", credentials=creds)  # Loại bỏ requestTimeout
+drive_service = build("drive", "v3", credentials=creds)
 
 # Thiết lập MongoDB
 try:
@@ -123,14 +123,6 @@ def add_watermark(input_path, output_path, watermark_text="Watermarked by Bot", 
         raise
 
 def extract_rar(rar_path, extract_dir):
-    """
-    Giải nén file RAR vào thư mục đích sử dụng rarfile.
-    Args:
-        rar_path (str): Đường dẫn tới file RAR cần giải nén.
-        extract_dir (str): Thư mục đích để lưu các file đã giải nén.
-    Raises:
-        Exception: Nếu xảy ra lỗi trong quá trình giải nén.
-    """
     try:
         file_size = os.path.getsize(rar_path)
         if file_size < MINIMUM_RAR_SIZE:
@@ -231,7 +223,7 @@ async def on_ready():
     logger.info(f"Bot đã sẵn sàng với tên {bot.user}")
     check_role_expirations.start()
 
-# Thêm lệnh !hotro để hiển thị danh sách câu lệnh (thay aliases "help" bằng "trogiup")
+# Thêm lệnh !hotro để hiển thị danh sách câu lệnh
 @bot.command(aliases=["trogiup"])
 async def hotro(ctx):
     help_message = (
@@ -243,7 +235,7 @@ async def hotro(ctx):
         "**!getkey <file_name>** - Lấy ObjectID của file theo tên.\n"
         "**!download <object_id>** - Tải file từ Google Drive (file sẽ được giải nén và gửi qua kênh riêng).\n"
         "**!check <download_id>** - Kiểm tra thông tin lượt tải bằng Download ID.\n"
-        "**!setrole <@user> <role>** - Gán role cho người dùng (yêu cầu quyền Admin/Mod/Team, ví dụ: `!setrole @user hiepsi-namtuoc`).\n"
+        "**!setrole** hoặc **!set** <@user> <role> - Gán role cho người dùng (yêu cầu quyền Admin/Mod/Team, ví dụ: `!setrole @user hiepsi-namtuoc`).\n"
         "**!cr [user]** - Kiểm tra thời gian còn lại của role (không nhập user để kiểm tra chính bạn, yêu cầu quyền Admin/Mod/Team để kiểm tra người khác).\n\n"
         "Nếu có vấn đề, hãy liên hệ Admin nhé! 😊"
     )
@@ -531,7 +523,7 @@ async def download(ctx, object_id: str):
                 await new_channel.send(file=discord.File(f, f"{os.path.splitext(file_name)[0]}.zip"))
             await new_channel.send("File đã được gửi! Kênh sẽ xóa sau 5 phút.")
             task = asyncio.create_task(delete_channel_after_delay(new_channel, user.id))
-            channel_timers[user_id] = (new_channel, task)
+            channel_timers[user.id] = (new_channel, task)
         os.remove(output_zip_path)
         await ctx.reply(f"{ctx.author.mention}, đã gửi file vào kênh riêng!")
         shutil.rmtree(temp_dir)
@@ -563,7 +555,7 @@ async def download(ctx, object_id: str):
             shutil.rmtree(temp_dir, ignore_errors=True)
         return
 
-@bot.command()
+@bot.command(aliases=["set"])  # Thêm alias để hỗ trợ !set
 @commands.check(lambda ctx: has_role(ctx.author, ["Admin", "Mod", "Team"]))
 async def setrole(ctx):
     if len(ctx.message.mentions) != 1:
