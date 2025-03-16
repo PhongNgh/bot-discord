@@ -126,25 +126,32 @@ def extract_rar(rar_path, extract_dir):
         Exception: Nếu xảy ra lỗi trong quá trình giải nén.
     """
     try:
+        file_size = os.path.getsize(rar_path)
+        if file_size < MINIMUM_RAR_SIZE:
+            with open(rar_path, 'rb') as f:
+                content = f.read()
+                logger.error(f"File tải về quá nhỏ! Nội dung (hex): {content.hex()}")
+            raise Exception(f"File {os.path.basename(rar_path)} quá nhỏ để là file RAR hợp lệ. Kích thước: {file_size} bytes, yêu cầu tối thiểu: {MINIMUM_RAR_SIZE} bytes.")
+
         os.makedirs(extract_dir, exist_ok=True)
         logger.info(f"Checking unrar path before extraction: {rarfile.UNRAR_TOOL}, Exists: {os.path.exists(rarfile.UNRAR_TOOL)}")
         if not rarfile.is_rarfile(rar_path):
             with open(rar_path, 'rb') as f:
                 content = f.read()
                 logger.error(f"File content (all bytes): {content.hex()}")
-            raise Exception(f"File {os.path.basename(rar_path)} không phải là file RAR hợp lệ.")
+            raise Exception(f"File {os.path.basename(rar_path)} không phải là file RAR hợp lệ. Kích thước: {file_size} bytes.")
         with rarfile.RarFile(rar_path) as rf:
             rf.extractall(extract_dir)
         logger.info(f"Successfully extracted {rar_path} to {extract_dir}")
     except rarfile.BadRarFile as e:
         logger.error(f"Error: File {rar_path} is not a valid RAR file. Details: {e}")
-        raise Exception(f"File {rar_path} không phải là file RAR hợp lệ. Chi tiết: {e}")
+        raise Exception(f"File {os.path.basename(rar_path)} không phải là file RAR hợp lệ. Kích thước: {file_size} bytes. Chi tiết: {e}")
     except rarfile.RarCannotExec:
         logger.error(f"Error: Không thể thực thi {rarfile.UNRAR_TOOL}. Vui lòng kiểm tra cài đặt.")
         raise Exception(f"Không tìm thấy công cụ giải nén tại {rarfile.UNRAR_TOOL}. Vui lòng kiểm tra cài đặt Docker.")
     except Exception as e:
         logger.error(f"Error extracting RAR: {e}")
-        raise Exception(f"Lỗi khi giải nén file: {str(e)}")
+        raise Exception(f"Lỗi khi giải nén file {os.path.basename(rar_path)}: {str(e)}")
 
 # Hàm nén file thành ZIP
 def create_zip(output_path, source_dir):
@@ -352,6 +359,7 @@ async def download(ctx, object_id: str):
             await ctx.reply(f"{ctx.author.mention}, không tìm thấy file!")
             return
         file_name = file["name"]
+        drive_file_id = file["drive_file_id"]
         download_id = generate_download_id()
         downloads_dir = "/tmp"
         temp_dir = os.path.join(downloads_dir, f"temp_{download_id}")
@@ -360,13 +368,15 @@ async def download(ctx, object_id: str):
         temp_file_path = os.path.join(temp_dir, file_name)
         logger.info(f"Downloading to {temp_file_path}")
 
-        # Lấy thông tin file từ Google Drive để kiểm tra kích thước
-        file_metadata = drive_service.files().get(fileId=file["drive_file_id"], fields="size").execute()
+        # Kiểm tra kích thước file trên Google Drive trước khi tải
+        file_metadata = drive_service.files().get(fileId=drive_file_id, fields="size").execute()
         expected_size = int(file_metadata.get("size", 0))
         logger.info(f"Expected file size from Google Drive: {expected_size} bytes")
+        if expected_size < MINIMUM_RAR_SIZE and file_name.lower().endswith('.rar'):
+            raise Exception(f"File trên Google Drive quá nhỏ để là file RAR hợp lệ! Kích thước: {expected_size} bytes, yêu cầu tối thiểu: {MINIMUM_RAR_SIZE} bytes.")
 
         # Sử dụng Google Drive API để tải file với timeout retry
-        request = drive_service.files().get_media(fileId=file["drive_file_id"])
+        request = drive_service.files().get_media(fileId=drive_file_id)
         max_retries = 5  # Tăng số lần thử lại lên 5
         for attempt in range(max_retries):
             try:
@@ -390,11 +400,11 @@ async def download(ctx, object_id: str):
         # Kiểm tra kích thước file tải về
         if actual_size != expected_size:
             raise Exception(f"Kích thước file tải về không khớp! Dự kiến: {expected_size} bytes, Thực tế: {actual_size} bytes.")
-        if actual_size < MINIMUM_RAR_SIZE:
+        if actual_size < MINIMUM_RAR_SIZE and file_name.lower().endswith('.rar'):
             with open(temp_file_path, 'rb') as f:
                 content = f.read()
                 logger.error(f"File tải về quá nhỏ! Nội dung (hex): {content.hex()}")
-            raise Exception(f"File tải về quá nhỏ để là file hợp lệ! Kích thước: {actual_size} bytes, yêu cầu tối thiểu: {MINIMUM_RAR_SIZE} bytes.")
+            raise Exception(f"File tải về quá nhỏ để là file RAR hợp lệ! Kích thước: {actual_size} bytes, yêu cầu tối thiểu: {MINIMUM_RAR_SIZE} bytes.")
 
         # Debug: Kiểm tra nội dung file tải về
         with open(temp_file_path, 'rb') as f:
@@ -530,6 +540,11 @@ async def download(ctx, object_id: str):
         return
 
 @bot.command()
+async def hotro(ctx):
+    """Lệnh hỗ trợ cơ bản để trả lời người dùng."""
+    await ctx.send(f"{ctx.author.mention}, xin chào! Tôi là Cán Bộ Thanh Tra. Bạn cần hỗ trợ gì? Vui lòng dùng các lệnh như `!add`, `!download`, `!list`, hoặc liên hệ Admin nếu có vấn đề. 😊")
+
+@bot.command()
 @commands.check(lambda ctx: has_role(ctx.author, ["Admin", "Mod", "Team"]))
 async def setrole(ctx):
     if len(ctx.message.mentions) != 1:
@@ -624,11 +639,11 @@ async def check_role_expirations():
 async def on_command_error(ctx, error):
     if isinstance(error, commands.MissingRole):
         await ctx.send("Bạn không có quyền sử dụng lệnh này!")
-    elif isinstance(error, commands.MemberNotFound):
-        await ctx.send("Không tìm thấy người dùng! Vui lòng mention một người dùng hợp lệ (ví dụ: @user).")
+    elif isinstance(error, commands.CommandNotFound):
+        await ctx.send(f"{ctx.author.mention}, lệnh không tồn tại. Vui lòng dùng `!hotro` để xem danh sách lệnh!")
     else:
         logger.error(f"Command error: {error}")
-        raise error
+        await ctx.send(f"{ctx.author.mention}, có lỗi xảy ra: {str(error)}. Vui lòng liên hệ Admin.")
 
 # Chạy bot
 bot.run(DISCORD_TOKEN)
