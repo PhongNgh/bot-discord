@@ -252,7 +252,7 @@ async def hotro(ctx):
         help_message = (
             f"{common_commands}\n"
             f"{admin_commands}\n"
-            "Nếu có vấn đề, hãy liên hệ Admin nhé! 😊"
+            ""
         )
     else:
         help_message = (
