@@ -178,7 +178,7 @@ async def remove_role_after_delay(member, role, user_id):
     await asyncio.sleep((datetime.utcnow() - role_timers[user_id][role.name][0]).total_seconds() * -1)
     await member.remove_roles(role)
     if user_id in role_timers and role.name in role_timers[user_id]:
-        del role_timers[user_id][role_name]
+        del role_timers[user_id][role.name]
         if not role_timers[user_id]:
             del role_timers[user_id]
     channel = bot.get_channel(ROLE_NOTIFICATION_CHANNEL_ID)
@@ -231,8 +231,8 @@ async def on_ready():
     logger.info(f"Bot đã sẵn sàng với tên {bot.user}")
     check_role_expirations.start()
 
-# Thêm lệnh !hotro để hiển thị danh sách câu lệnh
-@bot.command(aliases=["help"])
+# Thêm lệnh !hotro để hiển thị danh sách câu lệnh (thay aliases "help" bằng "trogiup")
+@bot.command(aliases=["trogiup"])
 async def hotro(ctx):
     help_message = (
         f"Xin chào {ctx.author.mention}! Tôi là Căn Bộ Thần Tra. Dưới đây là danh sách các lệnh hiện có:\n\n"
@@ -531,7 +531,7 @@ async def download(ctx, object_id: str):
                 await new_channel.send(file=discord.File(f, f"{os.path.splitext(file_name)[0]}.zip"))
             await new_channel.send("File đã được gửi! Kênh sẽ xóa sau 5 phút.")
             task = asyncio.create_task(delete_channel_after_delay(new_channel, user.id))
-            channel_timers[user.id] = (new_channel, task)
+            channel_timers[user_id] = (new_channel, task)
         os.remove(output_zip_path)
         await ctx.reply(f"{ctx.author.mention}, đã gửi file vào kênh riêng!")
         shutil.rmtree(temp_dir)
