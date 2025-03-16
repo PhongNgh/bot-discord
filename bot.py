@@ -238,10 +238,10 @@ async def hotro(ctx):
 
     # Danh sách lệnh dành riêng cho Admin/Mod/Team
     admin_commands = (
-        "**!add** - Upload file lên Google Drive (yêu cầu quyền Admin/Mod/Team).\n"
-        "**!delete <object_id>** - Xóa file khỏi Google Drive và MongoDB (yêu cầu quyền Admin/Mod/Team).\n"
-        "**!setrole** hoặc **!set** <@user> <role> - Gán role cho người dùng (yêu cầu quyền Admin/Mod/Team, ví dụ: `!setrole @user hiepsi-namtuoc`).\n"
-        "**!check <download_id>** - Kiểm tra thông tin lượt tải bằng Download ID (yêu cầu quyền Admin/Mod/Team).\n"
+        "**!add** - Upload file lên Google Drive.\n"
+        "**!delete <object_id>** - Xóa file khỏi Google Drive và MongoDB).\n"
+        "**!setrole** hoặc **!set** <@user> <role> - Gán role cho người dùng (ví dụ: `!setrole @user hiepsi-namtuoc`).\n"
+        "**!check <download_id>** - Kiểm tra thông tin lượt tải bằng Download ID.\n"
     )
 
     await ctx.send(help_message)
