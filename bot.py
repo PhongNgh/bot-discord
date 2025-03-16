@@ -223,22 +223,41 @@ async def on_ready():
     logger.info(f"Bot đã sẵn sàng với tên {bot.user}")
     check_role_expirations.start()
 
-# Thêm lệnh !hotro để hiển thị danh sách câu lệnh
+# Thêm lệnh !hotro để hiển thị danh sách câu lệnh (đã sửa để hiển thị theo role)
 @bot.command(aliases=["trogiup"])
 async def hotro(ctx):
-    help_message = (
-        f"Xin chào {ctx.author.mention}! Tôi là Căn Bộ Thần Tra. Dưới đây là danh sách các lệnh hiện có:\n\n"
+    # Danh sách lệnh chung cho tất cả người dùng
+    common_commands = (
+        f"Xin chào {ctx.author.mention}! Tôi là Căn Bộ Thần Tra. Dưới đây là danh sách các lệnh bạn có thể dùng:\n\n"
         "**!hotro** - Hiển thị danh sách tất cả các lệnh (bạn đang dùng lệnh này!).\n"
-        "**!add** - Upload file lên Google Drive (yêu cầu quyền Admin/Mod/Team).\n"
-        "**!delete <object_id>** - Xóa file khỏi Google Drive và MongoDB (yêu cầu quyền Admin/Mod/Team).\n"
         "**!list** - Hiển thị danh sách tất cả các file đã upload.\n"
         "**!getkey <file_name>** - Lấy ObjectID của file theo tên.\n"
         "**!download <object_id>** - Tải file từ Google Drive (file sẽ được giải nén và gửi qua kênh riêng).\n"
-        "**!check <download_id>** - Kiểm tra thông tin lượt tải bằng Download ID.\n"
-        "**!setrole** hoặc **!set** <@user> <role> - Gán role cho người dùng (yêu cầu quyền Admin/Mod/Team, ví dụ: `!setrole @user hiepsi-namtuoc`).\n"
-        "**!cr [user]** - Kiểm tra thời gian còn lại của role (không nhập user để kiểm tra chính bạn, yêu cầu quyền Admin/Mod/Team để kiểm tra người khác).\n\n"
-        "Nếu có vấn đề, hãy liên hệ Admin nhé! 😊"
+        "**!cr [user]** - Kiểm tra thời gian còn lại của role (không nhập user để kiểm tra chính bạn).\n"
     )
+
+    # Danh sách lệnh dành riêng cho Admin/Mod/Team
+    admin_commands = (
+        "**!add** - Upload file lên Google Drive (yêu cầu quyền Admin/Mod/Team).\n"
+        "**!delete <object_id>** - Xóa file khỏi Google Drive và MongoDB (yêu cầu quyền Admin/Mod/Team).\n"
+        "**!setrole** hoặc **!set** <@user> <role> - Gán role cho người dùng (yêu cầu quyền Admin/Mod/Team, ví dụ: `!setrole @user hiepsi-namtuoc`).\n"
+        "**!check <download_id>** - Kiểm tra thông tin lượt tải bằng Download ID (yêu cầu quyền Admin/Mod/Team).\n"
+    )
+
+    # Kiểm tra xem người dùng có role Admin/Mod/Team không
+    if has_role(ctx.author, ["Admin", "Mod", "Team"]):
+        help_message = (
+            f"Xin chào {ctx.author.mention}! Bạn là Admin/Mod/Team, dưới đây là toàn bộ danh sách lệnh:\n\n"
+            f"{common_commands}"
+            f"{admin_commands}\n"
+            "Nếu có vấn đề, hãy liên hệ Admin nhé! 😊"
+        )
+    else:
+        help_message = (
+            f"{common_commands}\n"
+            "Nếu có vấn đề, hãy liên hệ Admin nhé! 😊"
+        )
+
     await ctx.send(help_message)
 
 @bot.command()
@@ -339,6 +358,7 @@ async def getkey(ctx, name: str):
         await ctx.reply(f"{ctx.author.mention}, không tìm thấy file với tên '{name}'!")
 
 @bot.command()
+@commands.check(lambda ctx: has_role(ctx.author, ["Admin", "Mod", "Team"]))
 async def check(ctx, download_id: str):
     try:
         download_log = downloads_collection.find_one({"download_id": download_id})
@@ -555,7 +575,7 @@ async def download(ctx, object_id: str):
             shutil.rmtree(temp_dir, ignore_errors=True)
         return
 
-@bot.command(aliases=["set"])  # Thêm alias để hỗ trợ !set
+@bot.command(aliases=["set"])
 @commands.check(lambda ctx: has_role(ctx.author, ["Admin", "Mod", "Team"]))
 async def setrole(ctx):
     if len(ctx.message.mentions) != 1:
