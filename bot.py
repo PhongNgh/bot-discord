@@ -123,7 +123,7 @@ async def giahan(ctx):
             "action": "gia_han"
         })
         remaining_time = format_remaining_time(new_expiration_time)
-        await ctx.send(f"{user.mention}, role Gia Hạn của bạn đã được gia hạn thêm 50 ngày, còn {remaining_time}!")
+        await ctx.send(f"{user.mention}, bạn đã được gia hạn xem sếch thêm 50 ngày, còn {remaining_time}!")
         notification_channel = bot.get_channel(ROLE_NOTIFICATION_CHANNEL_ID)
         if notification_channel:
             await notification_channel.send(
