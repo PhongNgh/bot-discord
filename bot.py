@@ -131,7 +131,7 @@ async def giahan(ctx):
             "action": "gia_han"
         })
         remaining_time = format_remaining_time(new_expiration_time)
-        await ctx.send(f"{user.mention}, thời gian bạn được xem sếch được gia hạn thêm 50 ngày, còn {remaining_time}!")
+        await ctx.send(f"{user.mention}, role Gia Hạn của bạn đã được gia hạn thêm 50 ngày, còn {remaining_time}!")
         notification_channel = bot.get_channel(ROLE_NOTIFICATION_CHANNEL_ID)
         if notification_channel:
             await notification_channel.send(
@@ -165,7 +165,7 @@ async def giahan(ctx):
             "action": "cap_moi"
         })
         remaining_time = format_remaining_time(expiration_time)
-        await ctx.send(f"{user.mention}, bạn đã được cấp thời gian xem sếch trong 50 ngày!")
+        await ctx.send(f"{user.mention}, bạn đã được cấp role Gia Hạn trong 50 ngày!")
         notification_channel = bot.get_channel(ROLE_NOTIFICATION_CHANNEL_ID)
         if notification_channel:
             await notification_channel.send(
@@ -185,7 +185,7 @@ async def rm(ctx):
     user = ctx.message.mentions[0]
     role = discord.utils.get(ctx.guild.roles, name="Gia Hạn")
     if not role:
-        await ctx.send(f"{ctx.author.mention}, có lỗi rồi, liên hệ cho Admin nha!")
+        await ctx.send(f"{ctx.author.mention}, role Gia Hạn chưa được tạo, vui lòng nhờ Admin tạo role!")
         return
     if role in user.roles:
         try:
@@ -194,7 +194,7 @@ async def rm(ctx):
             await ctx.send(f"{ctx.author.mention}, đã gỡ role Gia Hạn khỏi {user.mention}!")
             notification_channel = bot.get_channel(ROLE_NOTIFICATION_CHANNEL_ID)
             if notification_channel:
-                await notification_channel.send(f"{user.mention}, bạn đã hết thời gian xem sếch!")
+                await notification_channel.send(f"{user.mention}, role Gia Hạn của bạn đã bị gỡ bởi {ctx.author.mention}!")
         except Exception as e:
             logger.error(f"Lỗi khi gỡ role Gia Hạn cho {user.id}: {e}")
             await ctx.send(f"{ctx.author.mention}, không thể gỡ role Gia Hạn khỏi {user.mention} do lỗi: {str(e)}")
@@ -207,7 +207,7 @@ async def check(ctx, user: discord.Member = None):
         user = ctx.author
     else:
         if not has_role(ctx.author, ["Admin", "Mod", "Friendly Dev"]):
-            await ctx.send(f"{ctx.author.mention}, bạn không có quyền kiểm tra thời gian của người khác! Hãy dùng `$check` để kiểm tra chính bạn.")
+            await ctx.send(f"{ctx.author.mention}, bạn không có quyền kiểm tra thời gian của người khác! Hãy dùng `$check` để kiểm tra role của chính bạn.")
             return
     record = role_timers_collection.find_one({"user_id": user.id, "role_name": "Gia Hạn"})
     if record and record["expiration_time"] > datetime.utcnow():
@@ -231,7 +231,7 @@ async def log(ctx, user: discord.Member = None):
         action = "Cấp mới" if record["action"] == "cap_moi" else "Gia hạn"
         history_list.append(f"- {action} vào {set_time}, hết hạn vào {expiration_time}")
     if history_list:
-        await ctx.send(f"Lịch sử gia hạn role Gia Hạn của {user.mention}:\n" + "\n".join(history_list))
+        await ctx.send(f"Lịch sử gia hạn của {user.mention}:\n" + "\n".join(history_list))
     else:
         await ctx.send(f"{user.mention} chưa có lịch sử gia hạn role Gia Hạn!")
 
