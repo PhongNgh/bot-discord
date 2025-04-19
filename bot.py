@@ -42,7 +42,7 @@ except Exception as e:
 
 # Ánh xạ role
 role_mapping = {
-    "giahan_09_6": "Gia hạn 09-6",  # Role chính được sử dụng
+    "giahan_09_6": "Gia Hạn 09-6",  # Role chính được sử dụng
     "giahan": "@Gia Hạn"           # Chỉ mapping, không sử dụng ngay
 }
 DEFAULT_ROLE_KEY = "giahan_09_6"  # Role mặc định
