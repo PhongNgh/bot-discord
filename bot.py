@@ -274,7 +274,7 @@ async def check(ctx, user: discord.Member = None):
         user = ctx.author
     else:
         if not has_role(ctx.author, ["Admin", "Mod", "Friendly Dev"]):
-            await ctx.send(f"{ctx.author.mention}, bạn không có quyền kiểm tra role của người khác! Hãy dùng `$check` để kiểm tra role của chính bạn.")
+            await ctx.send(f"{ctx.author.mention}, bạn không có quyền kiểm tra thời gian của người khác! Hãy dùng `$check` để kiểm tra thời gian của chính bạn.")
             return
     role_name = role_mapping[TIMED_ROLE_KEY]
     record = role_timers_collection.find_one({"user_id": user.id, "role_name": role_name})
