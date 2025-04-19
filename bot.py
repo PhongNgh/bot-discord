@@ -42,11 +42,10 @@ except Exception as e:
 
 # Ánh xạ role
 role_mapping = {
-    "giahan_09_6": "Gia Hạn 09-6",  # Role chính, không quản lý thời gian
-    "giahan_new": "Gia hạn"        # Role cho $giahanfn, quản lý thời gian
+    "giahan": "@Gia Hạn",      # Chỉ mapping, không sử dụng ngay
+    "giahan_new": "Gia hạn"    # Role chính cho $giahanfn
 }
-DEFAULT_ROLE_KEY = "giahan_09_6"  # Role mặc định cho $giahan
-TIMED_ROLE_KEY = "giahan_new"     # Role quản lý thời gian cho $giahanfn
+TIMED_ROLE_KEY = "giahan_new"  # Role quản lý thời gian
 
 # Hàm kiểm tra role
 def has_role(member, role_names):
@@ -100,44 +99,6 @@ async def on_ready():
             if member and role and role in member.roles:
                 asyncio.create_task(remove_role_after_delay(member, role, user_id, role_name))
     check_role_expirations.start()
-
-@bot.command()
-@commands.check(lambda ctx: has_role(ctx.author, ["Admin", "Mod", "Friendly Dev"]))
-async def giahan(ctx):
-    if len(ctx.message.mentions) != 1:
-        await ctx.send(f"{ctx.author.mention}, vui lòng mention đúng một người!")
-        return
-    user = ctx.message.mentions[0]
-    role_name = role_mapping[DEFAULT_ROLE_KEY]
-    role = discord.utils.get(ctx.guild.roles, name=role_name)
-    if not role:
-        await ctx.send(f"{ctx.author.mention}, role {role_name} chưa được tạo, vui lòng nhờ Admin tạo role!")
-        return
-    # Kiểm tra quyền Manage Roles của bot
-    if not ctx.guild.me.guild_permissions.manage_roles:
-        await ctx.send(f"{ctx.author.mention}, bot không có quyền Manage Roles! Vui lòng cấp quyền cho bot.")
-        return
-    # Kiểm tra thứ tự role
-    if role.position >= ctx.guild.me.top_role.position:
-        await ctx.send(f"{ctx.author.mention}, role {role_name} có thứ tự cao hơn role của bot! Vui lòng điều chỉnh thứ tự role.")
-        return
-
-    if role in user.roles:
-        await ctx.send(f"{user.mention}, bạn đã có role {role_name} rồi!")
-        return
-
-    try:
-        await user.add_roles(role)
-        logger.info(f"Đã cấp role {role_name} cho {user.id}")
-        await ctx.send(f"{user.mention}, bạn đã được cấp quyền xem sếch!")
-        notification_channel = bot.get_channel(ROLE_NOTIFICATION_CHANNEL_ID)
-        if notification_channel:
-            await notification_channel.send(
-                f"Cấp role {role_name} cho {user.mention} vào {datetime.utcnow().strftime('%H:%M %d/%m/%Y UTC')}"
-            )
-    except Exception as e:
-        logger.error(f"Lỗi khi cấp role {role_name} cho {user.id}: {e}")
-        await ctx.send(f"{ctx.author.mention}, không thể cấp role {role_name} cho {user.mention} do lỗi: {str(e)}")
 
 @bot.command()
 @commands.check(lambda ctx: has_role(ctx.author, ["Admin", "Mod", "Friendly Dev"]))
@@ -234,39 +195,33 @@ async def rm(ctx):
         await ctx.send(f"{ctx.author.mention}, vui lòng mention đúng một người!")
         return
     user = ctx.message.mentions[0]
+    role_name = role_mapping[TIMED_ROLE_KEY]
+    role = discord.utils.get(ctx.guild.roles, name=role_name)
+    if not role:
+        await ctx.send(f"{ctx.author.mention}, role {role_name} chưa được tạo, vui lòng nhờ Admin tạo role!")
+        return
     # Kiểm tra quyền Manage Roles của bot
     if not ctx.guild.me.guild_permissions.manage_roles:
         await ctx.send(f"{ctx.author.mention}, bot không có quyền Manage Roles! Vui lòng cấp quyền cho bot.")
         return
-
-    roles_to_remove = [role_mapping[DEFAULT_ROLE_KEY], role_mapping[TIMED_ROLE_KEY]]
-    removed_roles = []
-    for role_name in roles_to_remove:
-        role = discord.utils.get(ctx.guild.roles, name=role_name)
-        if not role:
-            continue
-        # Kiểm tra thứ tự role
-        if role.position >= ctx.guild.me.top_role.position:
-            await ctx.send(f"{ctx.author.mention}, role {role_name} có thứ tự cao hơn role của bot! Vui lòng điều chỉnh thứ tự role.")
-            continue
-        if role in user.roles:
-            try:
-                await user.remove_roles(role)
-                if role_name == role_mapping[TIMED_ROLE_KEY]:
-                    role_timers_collection.delete_one({"user_id": user.id, "role_name": role_name})
-                removed_roles.append(role_name)
-                logger.info(f"Đã gỡ role {role_name} khỏi {user.id}")
-            except Exception as e:
-                logger.error(f"Lỗi khi gỡ role {role_name} cho {user.id}: {e}")
-                await ctx.send(f"{ctx.author.mention}, không thể gỡ role {role_name} khỏi {user.mention} do lỗi: {str(e)}")
-
-    if removed_roles:
-        notification_channel = bot.get_channel(ROLE_NOTIFICATION_CHANNEL_ID)
-        if notification_channel:
-            await notification_channel.send(f"{user.mention}, thời gian xem sếch của bạn đã hết, vui lòng nạp VIP để lên mâm 1!")
-        await ctx.send(f"{ctx.author.mention}, đã gỡ role {', '.join(removed_roles)} khỏi {user.mention}!")
+    # Kiểm tra thứ tự role
+    if role.position >= ctx.guild.me.top_role.position:
+        await ctx.send(f"{ctx.author.mention}, role {role_name} có thứ tự cao hơn role của bot! Vui lòng điều chỉnh thứ tự role.")
+        return
+    if role in user.roles:
+        try:
+            await user.remove_roles(role)
+            role_timers_collection.delete_one({"user_id": user.id, "role_name": role_name})
+            await ctx.send(f"{ctx.author.mention}, đã gỡ role {role_name} khỏi {user.mention}!")
+            notification_channel = bot.get_channel(ROLE_NOTIFICATION_CHANNEL_ID)
+            if notification_channel:
+                await notification_channel.send(f"{user.mention}, thời gian xem sếch của bạn đã hết, vui lòng nạp VIP để lên mâm 1!")
+            logger.info(f"Đã gỡ role {role_name} khỏi {user.id}")
+        except Exception as e:
+            logger.error(f"Lỗi khi gỡ role {role_name} cho {user.id}: {e}")
+            await ctx.send(f"{ctx.author.mention}, không thể gỡ role {role_name} khỏi {user.mention} do lỗi: {str(e)}")
     else:
-        await ctx.send(f"{ctx.author.mention}, {user.mention} không có role nào để gỡ!")
+        await ctx.send(f"{ctx.author.mention}, {user.mention} không có role {role_name} để gỡ!")
 
 @bot.command()
 async def check(ctx, user: discord.Member = None):
