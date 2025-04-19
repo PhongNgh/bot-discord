@@ -42,7 +42,6 @@ except Exception as e:
 
 # Ánh xạ role
 role_mapping = {
-    "giahan": "@Gia Hạn",      # Chỉ mapping, không sử dụng ngay
     "giahan_new": "Gia hạn"    # Role chính cho $giahanfn
 }
 TIMED_ROLE_KEY = "giahan_new"  # Role quản lý thời gian
@@ -102,7 +101,7 @@ async def on_ready():
 
 @bot.command()
 @commands.check(lambda ctx: has_role(ctx.author, ["Admin", "Mod", "Friendly Dev"]))
-async def giahanfn(ctx):
+async def giahan(ctx):
     if len(ctx.message.mentions) != 1:
         await ctx.send(f"{ctx.author.mention}, vui lòng mention đúng một người!")
         return
